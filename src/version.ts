@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
+import { ASSETS } from './assets.js';
 
-// src/version.ts and dist/version.js are both one level below the package root.
-const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as { version: string };
+// The package's package.json (src/assets.ts).
+const pkg = JSON.parse(readFileSync(new URL('package.json', ASSETS), 'utf8')) as { version: string };
 
 export const VERSION: string = pkg.version;

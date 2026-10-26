@@ -1,0 +1,42 @@
+{
+  "description": "Python 3.14 t-strings whose interpolations read `pytest.mark.skip`, `pytest.skip` and `pytest.mark.xfail` (Codex, design review of the Python versions, round 1): an interpolation evaluates the expression and keeps its value in the template. The census of markers reads the two marks as markers it cannot attribute to a test: two WARNs, as for any other read of them, never a FAIL; the reader is not changed to tell a harmless read from a call (`py314-tstring-interpolation-call`). The real runner runs every test.",
+  "kind": "hard-legit",
+  "runner": "pytest",
+  "minPython": "3.14",
+  "expect": {
+    "verdict": "WARN",
+    "findings": [
+      {
+        "rule": "TG003",
+        "severity": "warn",
+        "file": "test_render.py",
+        "line": 17,
+        "test": null
+      },
+      {
+        "rule": "TG003",
+        "severity": "warn",
+        "file": "test_render.py",
+        "line": 17,
+        "test": null
+      }
+    ]
+  },
+  "runnerEvidence": {
+    "tool": "pytest 8.4.2",
+    "base": {
+      "[\"test_render.py\",\"test_deferred_annotation\",1]": "passed",
+      "[\"test_render.py\",\"test_except_without_parentheses\",1]": "passed",
+      "[\"test_render.py\",\"test_format_spec\",1]": "passed",
+      "[\"test_render.py\",\"test_interpolations\",1]": "passed",
+      "[\"test_render.py\",\"test_renders\",1]": "passed"
+    },
+    "head": {
+      "[\"test_render.py\",\"test_deferred_annotation\",1]": "passed",
+      "[\"test_render.py\",\"test_except_without_parentheses\",1]": "passed",
+      "[\"test_render.py\",\"test_format_spec\",1]": "passed",
+      "[\"test_render.py\",\"test_interpolations\",1]": "passed",
+      "[\"test_render.py\",\"test_renders\",1]": "passed"
+    }
+  }
+}

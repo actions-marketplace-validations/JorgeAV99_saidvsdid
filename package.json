@@ -1,6 +1,6 @@
 {
   "name": "saidvsdid",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "What your coding agent did with the tests: detects deleted, skipped, focused or weakened tests and test-configuration changes in a pull request, as one PR comment (GitHub Action) or a CLI report.",
   "license": "MIT",
   "author": "Jorge Díaz (https://github.com/JorgeAV99)",
@@ -10,6 +10,7 @@
   },
   "files": [
     "dist",
+    "!dist/action",
     "python",
     "grammars",
     "README.md",
@@ -48,6 +49,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "build:action": "node scripts/build-action.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "fixtures": "tsx fixtures/build.ts",
@@ -57,17 +59,19 @@
   },
   "dependencies": {
     "typescript": "5.9.3",
-    "web-tree-sitter": "0.27.0"
+    "web-tree-sitter": "0.27.1"
   },
   "devDependencies": {
-    "@playwright/test": "1.64.0",
+    "@playwright/test": "1.64.1",
     "@types/commonmark": "0.27.10",
     "@types/node": "^20.19.0",
     "@types/picomatch": "4.0.3",
     "commonmark": "0.31.2",
+    "esbuild": "0.28.2",
     "jest": "30.5.2",
     "picomatch": "4.0.7",
     "tsx": "^4.23.15",
-    "vitest": "^4.1.11"
+    "vitest": "^4.1.11",
+    "yaml": "2.9.1"
   }
 }

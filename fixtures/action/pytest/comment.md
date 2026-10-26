@@ -23,4 +23,4 @@ Not evaluated: TG006, TG007 (experimental) — `no transcript or evidence (--tra
 
 **Verdict: FAIL** · 1 fail · 3 warn · 0 info — this check does not block the merge, whatever the verdict (`fail-on` not set).
 
-<sub>saidvsdid 0.1.0 · base `63ed3f001139` → head `6fa300d202b7` · FAIL: a fact about the code, checkable by reading it · WARN: for a human to look at · `npx saidvsdid explain <RULE>` says what each rule catches and what it does not</sub>
+<sub>saidvsdid 0.2.0 · base `63ed3f001139` → head `6fa300d202b7` · FAIL: a fact about the code, checkable by reading it · WARN: for a human to look at · `npx saidvsdid explain <RULE>` says what each rule catches and what it does not</sub>

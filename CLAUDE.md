@@ -103,8 +103,9 @@
   source, a file's base and head in the same call and judged together on
   answers taken once per analysis, which the parser receives as values (one
   side unread → both read as unread: one WARN, no FAIL), cached by content; the file's bytes, decoded by Python itself (PEP
-  263), under `-X utf8`, stdin, stdout and stderr files, never pipes; 3.9–3.13, each run in CI, recorded
-  in the report; no interpreter, another version, a file it does not compile, a
+  263), under `-X utf8`, stdin, stdout and stderr files, never pipes; the versions python.org supports
+  (3.11–3.15 today), each run in CI, recorded in the report; a newer one runs as any other (no upper
+  bound; recorded as untested); no interpreter, an older version, a self-check that fails, a file it does not compile, a
   declared encoding other than UTF-8 or a BOM against the declaration, a reply
   out of protocol, a lone CR line break (`lone_cr`, not analysed) → one
   file-level WARN, never silence, never an exception): the rule is about the whole file — a runner name is certain only if
@@ -325,7 +326,7 @@
 2. Fixtures (`fixtures/cases/<RULE>/<case>/{base,head,case.json}`) → failing
    output → fix → `npm run typecheck && npm test && npm run build`.
 3. Open a PR; the fast CI (`.github/workflows/ci.yml`, Linux: the suite, the
-   fixtures against the real runners, Python 3.9 and 3.13, the dogfood) runs on
+   fixtures against the real runners, Python 3.11 and 3.15, the dogfood) runs on
    every push to it and must be green.
 4. External review with Codex on the PR; findings are fixed or moved to the
    backlog with a reason.
@@ -334,13 +335,13 @@
 6. **No PR is merged without `full-ci` green on its last commit, and that
    commit up to date with `main`.** GitHub enforces it: a ruleset on `main`
    requires the checks `full-ci` and `test, fixtures vs. real runners, Python
-   3.9/3.13, dogfood (ubuntu, node 22)` (ci.yml) on the PR's head, the branch
+   3.11/3.15, dogfood (ubuntu, node 22)` (ci.yml) on the PR's head, the branch
    up to date with `main` before merging, and allows no force-push and no
    deletion. `.github/workflows/full-ci.yml` runs on every push to every PR, no
    label needed:
    macOS (what depends on it), Windows (the test files that depend on Windows,
    listed in the workflow, and every fixture against the real runners when the
-   PR touches anything the recorder reads), Node 20 and 24, Python 3.10–3.12,
+   PR touches anything the recorder reads), Node 20 and 24, Python 3.11–3.15,
    and the full guarantee matrix when the PR may change what it reads (the
    path filters fail closed: an unknown path runs the job). Before merging, `node
    scripts/full-ci-status.mjs <PR>` must pass: `main` an ancestor of the PR's
@@ -371,8 +372,29 @@
    runs only what depends on the platform: on macOS and on Windows the whole
    suite, every fixture against the real runners and the packed CLI (all that
    each system ran on every push before the tiers), Node 20 and 24, Python
-   3.10–3.12, and the long e2e sessions on the three systems. Not the guarantee matrix: it is deterministic on the code and
+   3.11–3.15, and the long e2e sessions on the three systems. Not the guarantee matrix: it is deterministic on the code and
    passed in `full-ci` before the merge.
+9. **Dependabot** (`.github/dependabot.yml`). A Dependabot pull request that
+   touches only CI workflows (`.github/**`) or development dependencies
+   (`devDependencies`) is merged without asking when `ci` and `full-ci` are
+   green on its last commit, up to date with `main` (`node
+   scripts/full-ci-status.mjs <PR>`, as in 6), and the test of pins by SHA
+   (`test/pinned-actions.test.ts`, in the suite) passes; one at a time,
+   rebased on `main` before each (`@dependabot rebase`). One that touches
+   anything that goes into the npm package or `dist/action/` — a runtime
+   dependency (`dependencies`: typescript, `web-tree-sitter`), the grammars —
+   needs a notice to the owner (Jorge) and a new version: until it is
+   published, it is listed in `docs/unreleased.md`. When it changes what the
+   Action's bundle is built from, `dist/action/` is rebuilt and committed on
+   its branch (`npm run build:action`): `check-dist` rejects a stale bundle,
+   and it says nothing about the rest of the package. A Dependabot pull
+   request that fails only on `check-dist`, or only on the README's pins
+   (`test/readme-ci.test.ts`: every `uses:` of the README is exactly, SHA and
+   comment, the workflows' pin of that action), gets from the agent the
+   commit that regenerates `dist/action/` or updates the README's pins, on
+   the pull request's own branch; then the rule above applies as to any other
+   (green `ci` and `full-ci` on that last commit, and the notice and version
+   when it reaches the package).
 
 ## Process
 

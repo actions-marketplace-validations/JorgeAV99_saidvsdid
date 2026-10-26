@@ -1,8 +1,8 @@
 name: example
 
 # The permanent example pull request, "Example: what saidvsdid reports" (branch example/weakened-tests, never merged):
-# it weakens the tests of examples/demo on purpose, and this job runs the Action on it as the README tells a user to,
-# the published `@v0` with its default (it blocks nothing). The README links that pull request and shows its comment
+# it weakens the tests of examples/demo on purpose, and this job runs the Action on it as the README tells a user to:
+# a published release pinned by its commit SHA (the README's), with its default (it blocks nothing). The README links that pull request and shows its comment
 # (docs/img/comment.png). ci.yml's dogfood step leaves that branch to this job: one comment per pull request.
 
 on:
@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: JorgeAV99/saidvsdid@v0
+      - uses: JorgeAV99/saidvsdid@6e184a8ff14a5bcc607f4b3440055a56d54435c5 # v0.2.0

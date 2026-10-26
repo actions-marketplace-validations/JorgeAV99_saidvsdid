@@ -5,8 +5,15 @@ branding:
   color: orange
 
 # The workflow gives the job its permissions (an action cannot): `pull-requests: write` to post the comment and
-# `contents: read` to check out the code. The only token used is the job's own GITHUB_TOKEN. The checkout needs the
-# whole history (`fetch-depth: 0`): the diff runs from where the pull request left its base branch to its head.
+# `contents: read` to check out the code. The only token used is the job's own GITHUB_TOKEN (`github-token`'s default).
+# The checkout needs the whole history (`fetch-depth: 0`): the diff runs from where the pull request left its base
+# branch to its head.
+#
+# A JavaScript action: GitHub runs dist/action/index.js with its own Node.js 24. That file is one bundle with
+# everything the check needs next to it in dist/action/ (the tree-sitter grammars, the Python scope reader), built by
+# scripts/build-action.mjs and versioned: nothing is installed, downloaded or compiled in the user's repository.
+# Python is the runner's own (`python3`, else `python`; GitHub's hosted runners have it): without one that reads the
+# files, each Python test file is a WARN and nothing in it is a FAIL, never a silent OK.
 inputs:
   fail-on:
     description: "`none` (default): the check stays green whatever the verdict. `fail`: it fails on FAIL or worse (UNVERIFIABLE, ERROR). `warn`: it fails on WARN or worse."
@@ -20,38 +27,19 @@ inputs:
     description: "`true` (default): post one comment on the pull request and update it on every run. `false`: the job summary only."
     required: false
     default: 'true'
+  github-token:
+    description: "The token that posts the comment. The default, the job's own GITHUB_TOKEN, is the one to use; the workflow gives it `pull-requests: write`."
+    required: false
+    default: ${{ github.token }}
 
 outputs:
   verdict:
     description: OK, WARN, FAIL, UNVERIFIABLE or ERROR.
-    value: ${{ steps.check.outputs.verdict }}
   exit-code:
     description: The CLI's exit code for that verdict (0 OK, 1 WARN, 2 FAIL, 3 UNVERIFIABLE or ERROR).
-    value: ${{ steps.check.outputs.exit-code }}
   comment-url:
     description: The PR comment's URL, empty when none was posted.
-    value: ${{ steps.check.outputs.comment-url }}
 
 runs:
-  using: composite
-  steps:
-    # The CLI is built from this action's own source, at the ref the workflow names: no package is downloaded at run time
-    # besides the npm dependencies its lockfile pins.
-    - name: Build saidvsdid
-      shell: bash
-      working-directory: ${{ github.action_path }}
-      run: |
-        node -e 'process.exit(Number(process.versions.node.split(".")[0]) >= 20 ? 0 : 1)' || { echo "::error::saidvsdid needs Node.js 20 or later (found $(node --version)): add actions/setup-node before it"; exit 1; }
-        if [ ! -f dist/action/main.js ]; then
-          npm ci --ignore-scripts --no-audit --no-fund --loglevel=error
-          npm run build --silent
-        fi
-    - name: Check the pull request
-      id: check
-      shell: bash
-      env:
-        INPUT_FAIL_ON: ${{ inputs.fail-on }}
-        INPUT_EXCLUDE: ${{ inputs.exclude }}
-        INPUT_COMMENT: ${{ inputs.comment }}
-        GITHUB_TOKEN: ${{ github.token }}
-      run: node "$GITHUB_ACTION_PATH/dist/action/main.js"
+  using: node24
+  main: dist/action/index.js

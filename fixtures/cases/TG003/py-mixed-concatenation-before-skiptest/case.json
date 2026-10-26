@@ -1,0 +1,17 @@
+{
+  "description": "Codex, design review of the Python versions (round 2): an implicit concatenation of a string and an f-string is a JoinedStr, not a str constant, so not a docstring, and its interpolation runs. `\"Parses \" f\"{1 / 0}\"` raises before `self.skipTest(\"pending\")`: the skip is not the first statement of the test (F2), a WARN, never a FAIL. The real runner reports an error, no skip.",
+  "kind": "hard-legit",
+  "runner": "pytest",
+  "expect": { "verdict": "WARN", "findings": [
+    { "rule": "TG003", "severity": "warn", "file": "test_parser.py", "line": 7, "test": "TestParser::test_parses" }
+  ] },
+  "runnerEvidence": {
+    "tool": "pytest 8.4.2",
+    "base": {
+      "[\"test_parser.py\",\"TestParser::test_parses\",1]": "passed"
+    },
+    "head": {
+      "[\"test_parser.py\",\"TestParser::test_parses\",1]": "failed"
+    }
+  }
+}

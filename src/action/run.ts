@@ -8,12 +8,23 @@ import { runCheck } from '../check.js';
 import { git } from '../git/diff.js';
 import { COMMENT_MARKER, gateText, literal, renderComment, type FailOn, type LineLink } from '../report/comment.js';
 import { EXIT_CODES, type Verdict } from '../report/model.js';
+import { ownRecord } from '../util/names.js';
 import { VERSION } from '../version.js';
 
 /** The identity of `GITHUB_TOKEN`: only its own comments are updated, never one someone else wrote with the marker. */
 export const ACTIONS_BOT = 'github-actions[bot]';
 
 export type Env = Readonly<Record<string, string | undefined>>;
+
+/**
+ * The environment as runAction reads it, from the one GitHub gives the Action (action.yml, `runs: using: node24`): a
+ * JavaScript action gets its inputs as `INPUT_<NAME>` with the name's hyphens kept (`INPUT_FAIL-ON`), and no token but
+ * the one an input passes (`github-token`, whose default is the job's GITHUB_TOKEN).
+ */
+export function actionEnv(env: Env): Env {
+  // Own properties only, no prototype (src/util/names.ts): runAction looks names up in it.
+  return ownRecord<string | undefined>(Object.assign({}, env, { INPUT_FAIL_ON: env['INPUT_FAIL-ON'], GITHUB_TOKEN: env['INPUT_GITHUB-TOKEN'] }));
+}
 
 export interface ActionDeps {
   env: Env;

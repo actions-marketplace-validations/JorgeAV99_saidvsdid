@@ -7,7 +7,8 @@ name: full-ci
 #
 # - The platform jobs: macOS, only what depends on macOS (the `caseInsensitiveFs` fixtures, the Python scope reader,
 #   the real file system and shells; monthly: the whole suite, every fixture against the real runners, the packed CLI); Windows, the test files that depend on Windows (the list below; monthly: the whole
-#   suite) and every fixture against the real runners; Node 20 and 24; the Python scope reader on 3.10–3.12.
+#   suite) and every fixture against the real runners; Node 20 and 24; the Python scope reader on every supported
+#   version (3.11–3.15). The interpreter of every other job is the newest supported one, 3.15 (ci.yml says why).
 # - The guarantee matrix (8 shards, failing closed), only when the pull request may change what it reads; never monthly.
 # - No `paths-ignore` here: the check must exist for every pull request. The paths job (scripts/guarantee-matrix-paths.mjs,
 #   fails closed: an unknown path runs everything) decides three times. `platform`: a pull request that only touches
@@ -49,11 +50,11 @@ jobs:
       matrix: ${{ steps.matrix.outputs.run }}
       evidence: ${{ steps.evidence.outputs.run }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
       # Each step writes run=true|false; if the script cannot answer, run.
@@ -84,6 +85,36 @@ jobs:
           node scripts/guarantee-matrix-paths.mjs "origin/${{ github.base_ref }}" HEAD || echo "run=true" >> "$GITHUB_OUTPUT"
           grep -q '^run=' "$GITHUB_OUTPUT" || echo "run=true" >> "$GITHUB_OUTPUT"
 
+  check-dist:
+    # dist/action/ is the GitHub Action's bundle (action.yml runs dist/action/index.js), versioned so that the Action
+    # installs and compiles nothing in the user's repository. Rebuilt here from this commit's sources and lockfile
+    # (scripts/build-action.mjs) and compared with the versioned copy, every file: what users run is what was reviewed.
+    # On every pull request, whatever it touches.
+    name: check-dist
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: node scripts/build-action.mjs
+      - name: The versioned dist/action/ is the build
+        shell: bash
+        run: |
+          changed=$(git status --porcelain --untracked-files=all -- dist/action)
+          if [ -n "$changed" ]; then
+            echo "$changed"
+            git diff --stat -- dist/action
+            echo "::error::dist/action/ is not what scripts/build-action.mjs builds from this commit: run 'npm run build:action' and commit dist/action/"
+            exit 1
+          fi
+          echo "dist/action/ is the build ($(git ls-files dist/action | wc -l) files)"
+
   docs-only:
     # Documentation only: the tests that read it (docs/rules.md, docs/evidence.md, the README, the privacy test…) are
     # in the Linux suite.
@@ -93,16 +124,16 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: '3.15'
           cache: pip
           cache-dependency-path: .github/requirements-ci.txt
       - run: python -m pip install -r .github/requirements-ci.txt
@@ -121,16 +152,16 @@ jobs:
       matrix:
         node: [20, 24]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: ${{ matrix.node }}
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: '3.15'
           cache: pip
           cache-dependency-path: .github/requirements-ci.txt
       - run: python -m pip install -r .github/requirements-ci.txt
@@ -149,37 +180,40 @@ jobs:
           npx saidvsdid explain TG001 > /dev/null
 
   python-versions:
-    # The Python scope reader on the versions between the oldest and the newest (3.9 and 3.13 run in ci.yml): the
-    # resolver's tests and every fixture with a Python file. A version that fails here leaves the supported list.
-    name: Python 3.10–3.12 scope reader
+    # The Python scope reader on every supported version (python.org's supported CPython versions; ci.yml runs the
+    # oldest and the newest on every push): the resolver's tests and every fixture with a Python file. One job, the
+    # versions in turn: scripts/full-ci-status.mjs requires it by this name.
+    name: Python 3.11–3.15 scope reader
     needs: paths
     if: needs.paths.outputs.platform != 'false'
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: |
-            3.10
             3.11
             3.12
+            3.13
+            3.14
+            3.15
           cache: pip
           cache-dependency-path: .github/requirements-ci.txt
-      - run: for v in 3.10 3.11 3.12; do "python$v" -m pip install -r .github/requirements-ci.txt; done
+      - run: for v in 3.11 3.12 3.13 3.14 3.15; do "python$v" -m pip install -r .github/requirements-ci.txt; done
       - run: npm ci
       - name: Python resolver tests and Python fixtures, on each version
         env:
           SAIDVSDID_FIXTURES: python
         run: |
           status=0
-          for v in 3.10 3.11 3.12; do
+          for v in 3.11 3.12 3.13 3.14 3.15; do
             echo "::group::Python $v"
             SAIDVSDID_PYTHON="python$v" SAIDVSDID_PYTHON_MATRIX="$v" npx vitest run test/py-exhaustive.test.ts test/py-protocol.test.ts test/py-unavailable.test.ts test/positions.test.ts test/runner-binding.test.ts test/parse.test.ts test/fixtures.test.ts || { status=1; echo "::error::Python $v scope reader failed"; }
             echo "::endgroup::"
@@ -214,16 +248,16 @@ jobs:
       matrix:
         shard: ${{ inputs.monthly && fromJSON('["fixtures", "rest"]') || fromJSON('["windows-dependent files"]') }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: '3.15'
           cache: pip
           cache-dependency-path: .github/requirements-ci.txt
       - run: python -m pip install -r .github/requirements-ci.txt
@@ -265,16 +299,16 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: '3.15'
           cache: pip
           cache-dependency-path: .github/requirements-ci.txt
       - run: python -m pip install -r .github/requirements-ci.txt
@@ -294,16 +328,16 @@ jobs:
     runs-on: macos-latest
     timeout-minutes: 60
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: '3.15'
           cache: pip
           cache-dependency-path: .github/requirements-ci.txt
       - run: python -m pip install -r .github/requirements-ci.txt
@@ -362,16 +396,16 @@ jobs:
       matrix:
         shard: [0, 1, 2, 3, 4, 5, 6, 7]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
-          python-version: '3.12'
+          python-version: '3.15'
       - run: npm ci
       - name: Run the shard
         env:
@@ -379,7 +413,7 @@ jobs:
         run: npx tsx scripts/guarantee-matrix.ts --mode full --shard ${{ matrix.shard }} --shards 8 --out failing.jsonl --report shard-${{ matrix.shard }}.json
       - name: Publish what the shard ran
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: guarantee-matrix-shard-${{ matrix.shard }}
           path: shard-${{ matrix.shard }}.json
@@ -398,15 +432,15 @@ jobs:
     steps:
       - name: Every shard succeeded
         run: test "${{ needs.guarantee-shard.result }}" = "success"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
       - run: npm ci
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           pattern: guarantee-matrix-shard-*
           path: shard-reports
@@ -418,7 +452,7 @@ jobs:
     # The one check to read before a merge, required by the `main` ruleset. Green only when the paths answered, and
     # every job those answers require succeeded; any other result fails it.
     name: full-ci
-    needs: [paths, docs-only, node, python-versions, windows, runner-evidence-windows, macos, guarantee-shard, guarantee-full]
+    needs: [paths, check-dist, docs-only, node, python-versions, windows, runner-evidence-windows, macos, guarantee-shard, guarantee-full]
     if: always()
     runs-on: ubuntu-latest
     steps:
@@ -430,6 +464,7 @@ jobs:
           MATRIX: ${{ needs.paths.outputs.matrix }}
           EVIDENCE: ${{ needs.paths.outputs.evidence }}
           RESULTS: >-
+            check-dist=${{ needs.check-dist.result }}
             docs-only=${{ needs.docs-only.result }}
             node=${{ needs.node.result }}
             python-versions=${{ needs.python-versions.result }}
@@ -443,8 +478,8 @@ jobs:
           test "$PATHS" = "success"
           # platform=false (documentation only): docs-only must succeed; anything else, every platform job, and Windows'
           # fixtures against the real runners unless evidence=false. The matrix, unless matrix=false. An answer other
-          # than an explicit "false" (empty included) requires the job.
-          if [ "$PLATFORM" = "false" ]; then required="docs-only"; else required="node python-versions windows macos"; fi
+          # than an explicit "false" (empty included) requires the job. check-dist, always.
+          if [ "$PLATFORM" = "false" ]; then required="check-dist docs-only"; else required="check-dist node python-versions windows macos"; fi
           if [ "$PLATFORM" != "false" ] && [ "$EVIDENCE" != "false" ]; then required="$required runner-evidence-windows"; fi
           if [ "$MATRIX" != "false" ]; then required="$required guarantee-shard guarantee-full"; fi
           for job in $required; do

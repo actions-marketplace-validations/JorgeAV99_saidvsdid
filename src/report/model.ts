@@ -53,7 +53,7 @@ export interface Report {
     name: 'saidvsdid';
     version: string;
     /** What read the files' names (docs/rules.md, *Attribution*): the TypeScript compiler's version, and the Python interpreter's when one read Python files (null: none did). */
-    scopes?: { typescript: string; python: string | null; python_unavailable?: string };
+    scopes?: { typescript: string; python: string | null; python_unavailable?: string; python_untested?: string };
   };
   repo: { base: string; head: string };
   mode: Mode;

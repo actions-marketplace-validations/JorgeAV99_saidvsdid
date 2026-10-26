@@ -1,0 +1,23 @@
+{
+  "description": "Python 3.14 syntax inside the tests (t-strings, `except A, B:`, deferred annotations): the pytest file is deleted. The reader reads the base and collects every one of its five tests: one FAIL listing all of them.",
+  "kind": "positive",
+  "runner": "pytest",
+  "minPython": "3.14",
+  "expect": { "verdict": "FAIL", "findings": [
+    { "rule": "TG001", "severity": "fail", "file": "tests/test_render.py", "line": null, "test": null, "ids": [["test_renders",1],["test_format_spec",1],["test_interpolations",1],["test_except_without_parentheses",1],["test_deferred_annotation",1]] }
+  ] },
+  "runnerEvidence": {
+    "tool": "pytest 8.4.2",
+    "base": {
+      "[\"tests/test_other.py\",\"test_other\",1]": "passed",
+      "[\"tests/test_render.py\",\"test_deferred_annotation\",1]": "passed",
+      "[\"tests/test_render.py\",\"test_except_without_parentheses\",1]": "passed",
+      "[\"tests/test_render.py\",\"test_format_spec\",1]": "passed",
+      "[\"tests/test_render.py\",\"test_interpolations\",1]": "passed",
+      "[\"tests/test_render.py\",\"test_renders\",1]": "passed"
+    },
+    "head": {
+      "[\"tests/test_other.py\",\"test_other\",1]": "passed"
+    }
+  }
+}

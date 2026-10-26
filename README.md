@@ -54,14 +54,14 @@ location links to its line):
 >
 > **Verdict: FAIL** · 1 fail · 3 warn · 0 info — this check does not block the merge, whatever the verdict (`fail-on` not set).
 >
-> <sub>saidvsdid 0.1.0 · base `d2025824aa4f` → head `5b530048dd1f` · FAIL: a fact about the code, checkable by reading it · WARN: for a human to look at · `npx saidvsdid explain <RULE>` says what each rule catches and what it does not</sub>
+> <sub>saidvsdid 0.2.0 · base `d2025824aa4f` → head `5b530048dd1f` · FAIL: a fact about the code, checkable by reading it · WARN: for a human to look at · `npx saidvsdid explain <RULE>` says what each rule catches and what it does not</sub>
 <!-- /example:comment -->
 
 The same pull request from the command line:
 
 <!-- example:cli -->
 ```text
-saidvsdid 0.1.0 — base d2025824aa4f → head 5b530048dd1f
+saidvsdid 0.2.0 — base d2025824aa4f → head 5b530048dd1f
 rules: TG001, TG002, TG003, TG004, TG005 · test files analysed: 1
 not evaluated: TG006 (experimental) — no transcript or evidence (--transcript, --evidence)
 not evaluated: TG007 (experimental) — no transcript or evidence (--transcript, --evidence)
@@ -106,30 +106,46 @@ jobs:
   saidvsdid:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: JorgeAV99/saidvsdid@v0
+      - uses: JorgeAV99/saidvsdid@6e184a8ff14a5bcc607f4b3440055a56d54435c5 # v0.2.0
 ```
 <!-- /example:workflow -->
 
 On every push to the pull request it updates the same comment (it never adds
 a second one) and writes the same report to the job summary.
 
+- **Pin it by its full commit SHA**, with the release as a comment, as
+  above: a commit cannot change, so your job runs the code of the release
+  you chose. Dependabot (`package-ecosystem: github-actions`) updates the SHA
+  and the comment together. The SHA of each release is on its
+  [release page](https://github.com/JorgeAV99/saidvsdid/releases).
+- `JorgeAV99/saidvsdid@v0` is the convenient alternative: `v0` is a tag this
+  repository moves to every 0.x release, so you get them without a change.
+  The risk is that a tag can be moved: whoever can push tags here decides
+  what code runs in your job, with its token's `pull-requests: write`.
 - `fetch-depth: 0`: the diff runs from where the pull request left its base
   branch to its head, so both must be in the clone.
 - `pull-requests: write` is only for the comment. A pull request from a fork
   gets a read-only token: the comment is not posted (a warning says so) and
   the report is still in the job summary.
-- Node.js 20 or later on the runner (GitHub's hosted runners have it). Python
-  3.9–3.13 reads Python files; without it, each Python file is a `WARN` and
-  nothing in it is a `FAIL`.
+- From v0.2.0 the Action runs on GitHub's own Node.js 24 and installs
+  nothing: it is one bundle (`dist/action/`) with what it reads (v0.1.0
+  builds itself with `npm ci` on the runner's Node.js 20 or later). Python is
+  the runner's (`python3`, else `python`; GitHub's hosted runners have it):
+  any CPython that python.org supports (3.11–3.15 today, each tested in CI).
+  A newer Python is used as it is: saidvsdid does not refuse it, and if its
+  reader fails on a file, that file is a `WARN` (`scope_unavailable`), never
+  `OK` and never a `FAIL`. Without Python, or with one older than 3.11, each
+  Python file is a `WARN` and nothing in it is a `FAIL`.
 
 | Input | Default | |
 |---|---|---|
 | `fail-on` | `none` | `none`: the check is green whatever the verdict. `fail`: it fails on `FAIL` or worse. `warn`: it fails on `WARN` or worse. |
 | `exclude` | | Paths to leave out, one glob per line (test data that holds deliberately broken tests, for example). |
 | `comment` | `true` | `false`: the job summary only. |
+| `github-token` | the job's `GITHUB_TOKEN` | From v0.2.0. The token that posts the comment; keep the default. |
 
 Outputs: `verdict` (`OK`, `WARN`, `FAIL`, `UNVERIFIABLE`, `ERROR`),
 `exit-code` (the CLI's) and `comment-url`.
@@ -137,7 +153,7 @@ Outputs: `verdict` (`OK`, `WARN`, `FAIL`, `UNVERIFIABLE`, `ERROR`),
 ### Make it block
 
 ```yaml
-      - uses: JorgeAV99/saidvsdid@v0
+      - uses: JorgeAV99/saidvsdid@6e184a8ff14a5bcc607f4b3440055a56d54435c5 # v0.2.0
         with:
           fail-on: fail   # or: warn
 ```

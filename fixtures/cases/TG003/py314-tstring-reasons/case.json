@@ -1,0 +1,34 @@
+{
+  "description": "Python 3.14 t-strings as the reason of the vocabulary's skips and expected failure (`pytest.skip(t\"…\")`, `@pytest.mark.skip(reason=t\"…\")`, `@pytest.mark.skip(t\"…\")`, `@pytest.mark.xfail(reason=t\"…\")`, `self.skipTest(t\"…\")`, `@unittest.skip(t\"…\")`). A t-string is a Template, not a str, so none is a form the rule reads (F2, F5: `ast.literal_eval` does not read it): a WARN each, never a FAIL. The real runner shows why: pytest refuses a Template as a skip's message (the tests fail or error with a TypeError), so a FAIL `not-run` would be false.",
+  "kind": "hard-legit",
+  "runner": "pytest",
+  "minPython": "3.14",
+  "expect": { "verdict": "WARN", "findings": [
+    { "rule": "TG003", "severity": "warn", "file": "test_reasons.py", "line": 7, "test": "test_call" },
+    { "rule": "TG003", "severity": "warn", "file": "test_reasons.py", "line": 11, "test": "test_mark_keyword" },
+    { "rule": "TG003", "severity": "warn", "file": "test_reasons.py", "line": 16, "test": "test_mark_positional" },
+    { "rule": "TG003", "severity": "warn", "file": "test_reasons.py", "line": 21, "test": "test_xfail" },
+    { "rule": "TG003", "severity": "warn", "file": "test_reasons.py", "line": 28, "test": "TestCaseReasons::test_skiptest" },
+    { "rule": "TG003", "severity": "warn", "file": "test_reasons.py", "line": 31, "test": "TestCaseReasons::test_decorator" },
+    { "rule": "TG004", "severity": "warn", "file": "test_reasons.py", "line": 32, "test": "TestCaseReasons::test_decorator" }
+  ] },
+  "runnerEvidence": {
+    "tool": "pytest 8.4.2",
+    "base": {
+      "[\"test_reasons.py\",\"TestCaseReasons::test_decorator\",1]": "passed",
+      "[\"test_reasons.py\",\"TestCaseReasons::test_skiptest\",1]": "passed",
+      "[\"test_reasons.py\",\"test_call\",1]": "passed",
+      "[\"test_reasons.py\",\"test_mark_keyword\",1]": "passed",
+      "[\"test_reasons.py\",\"test_mark_positional\",1]": "passed",
+      "[\"test_reasons.py\",\"test_xfail\",1]": "passed"
+    },
+    "head": {
+      "[\"test_reasons.py\",\"TestCaseReasons::test_decorator\",1]": "failed",
+      "[\"test_reasons.py\",\"TestCaseReasons::test_skiptest\",1]": "skipped",
+      "[\"test_reasons.py\",\"test_call\",1]": "failed",
+      "[\"test_reasons.py\",\"test_mark_keyword\",1]": "failed",
+      "[\"test_reasons.py\",\"test_mark_positional\",1]": "failed",
+      "[\"test_reasons.py\",\"test_xfail\",1]": "xpassed"
+    }
+  }
+}

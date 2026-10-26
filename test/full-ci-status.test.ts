@@ -55,7 +55,7 @@ describe('the PR is up to date with its base: the squash is the tree full-ci tes
 // current base: the run that passed must have run what that diff requires.
 describe('the run that passed covers the scope of the diff against the current base', () => {
   const MATRIX = 'guarantee matrix (full)';
-  const PLATFORM = 'Python 3.10–3.12 scope reader';
+  const PLATFORM = 'Python 3.11–3.15 scope reader';
   const EVIDENCE = 'fixtures vs. real runners (windows)';
   const withMatrix = [run(1, HEAD, [['full-ci', 'success'], [PLATFORM, 'success'], [MATRIX, 'success']])];
   const withoutMatrix = [run(1, HEAD, [['full-ci', 'success'], [PLATFORM, 'success'], [MATRIX, 'skipped']])];
@@ -108,7 +108,8 @@ describe('the run that passed covers the scope of the diff against the current b
 describe('full-ci tests the head commit itself', () => {
   it('every checkout of full-ci.yml pins the pull request\'s head (or the called commit)', () => {
     const lines = readFileSync(new URL('../.github/workflows/full-ci.yml', import.meta.url), 'utf8').split('\n');
-    const checkouts = lines.flatMap((l, i) => (l.trim() === '- uses: actions/checkout@v4' ? [i] : []));
+    const checkouts = lines.flatMap((l, i) => (/^- uses: actions\/checkout@[0-9a-f]{40} # v[\d.]+$/.test(l.trim()) ? [i] : []));
+    expect(lines.filter((l) => l.includes('actions/checkout@')).length).toBe(checkouts.length);
     expect(checkouts.length).toBeGreaterThan(5);
     for (const i of checkouts) {
       const step: string[] = [];

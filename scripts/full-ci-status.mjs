@@ -27,7 +27,7 @@ import { decide, DOCS, EXCLUDED, RUNNER_EVIDENCE } from './guarantee-matrix-path
  * Windows' fixtures against the real runners (the `full-ci` job requires each when its paths job asks for it). A name that no longer exists is never a success:
  * the check fails closed (test/full-ci-status.test.ts reads the names in the workflow).
  */
-export const REQUIRED_JOBS = { matrix: 'guarantee matrix (full)', platform: 'Python 3.10–3.12 scope reader', evidence: 'fixtures vs. real runners (windows)' };
+export const REQUIRED_JOBS = { matrix: 'guarantee matrix (full)', platform: 'Python 3.11–3.15 scope reader', evidence: 'fixtures vs. real runners (windows)' };
 
 /**
  * The run on exactly that commit that completed with success (a run cancelled while a job kept its success does not

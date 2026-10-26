@@ -1,11 +1,10 @@
 import { fileURLToPath } from 'node:url';
 import { Language, Parser } from 'web-tree-sitter';
+import { ASSETS } from '../assets.js';
 import type { LanguageId } from './types.js';
 
-// Grammars are vendored WASM files (see grammars/manifest.json). This module
-// lives at src/parse/ (tests) and dist/parse/ (published), both two levels
-// below the package root, so the same relative URL works for both.
-const GRAMMAR_DIR = new URL('../../grammars/', import.meta.url);
+// Grammars are vendored WASM files (see grammars/manifest.json), in the package's grammars/ (src/assets.ts).
+const GRAMMAR_DIR = new URL('grammars/', ASSETS);
 
 const GRAMMAR_FILES: Record<LanguageId, string> = {
   typescript: 'tree-sitter-typescript.wasm',

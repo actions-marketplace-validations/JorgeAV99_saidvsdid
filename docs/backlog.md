@@ -3,13 +3,23 @@
 Work that is deliberately out of scope for the milestone that found it. Each
 item says where it came from. Nothing here is implemented.
 
+## Python versions: what is left
+
+From the PR that read the versions python.org supports (3.11–3.15, no upper bound) and its Codex design review:
+
+- **Lazy imports (Python 3.15, PEP 810).** `lazy import pytest` is read by Python, but tree-sitter-python 0.25.0 (its
+  newest release) has no `lazy` keyword: the file has syntax errors for the tree and its comparison is UNVERIFIABLE
+  (`TG003/py315-lazy-import-unverifiable`). When the grammar parses them, read a module-level lazy import of a runner
+  as the import it is (the name is bound once, to the module, loaded at its first use), with a fixture and the real
+  runner's evidence.
+- **Interpolations of a t-string that read the vocabulary** (`t"{pytest.mark.skip}"`) are WARNs of the census of
+  markers, as any other read of them (`TG003/py314-tstring-interpolation-control`). Telling a read from a call inside an
+  interpolation needs data from real pull requests first.
+
 ## The GitHub Action: what is left
 
 From the PR that added `action.yml` (src/action/, test/action.test.ts). Deliberately not in it:
 
-- **No build at run time.** The Action runs `npm ci` and `npm run build` in its own checkout on every job (dev
-  dependencies included: the build needs `@types/node`). Once the package is on npm, or with `dist/` committed on
-  release tags, it can run the built CLI directly; measure the job's time first.
 - **Two runs at once can post two comments.** Each run lists the comments and then creates one; the README's
   workflow has a `concurrency` group per pull request, which avoids it. Without one, the next run updates the
   oldest and leaves the other.
@@ -25,13 +35,8 @@ From the security review of the Action before the Marketplace (PR #12, after the
 in the comment only as code). None of them is a way to run code, raise permissions, leak the token or abuse the
 comment in a repository that uses the Action as the README says:
 
-- **A narrower install.** `npm ci` installs every dev dependency (Playwright, Jest, Vitest… pinned by the lockfile,
-  with `--ignore-scripts`) to run `tsc`; installing only what the build needs, or the item above, shrinks what is
-  fetched on every job.
 - **`persist-credentials: false`** in the README's checkout: saidvsdid needs no credentials in `.git/config`, and
   nothing it runs reads them; defence in depth for workflows that add steps after it.
-- **Pinning by commit.** The README says `@v0`, a tag that moves; recommend a full commit SHA for those who pin
-  their actions.
 - **`pull_request_target`.** The Action reads any event with a `pull_request` and does not run the pull request's
   code, but on that event the comment would be posted for forks too: say in the job (a warning) that the event is
   not the README's, or refuse it.
@@ -47,6 +52,10 @@ From Codex's GO on the comment's rendering (scripts/check-gfm-render.mjs, GitHub
 - **Attributes of the allowed elements.** The oracle checks which elements GitHub's HTML holds and the links' `href`;
   `<g-emoji>` and `<svg>` (with its `<path>`) are allowed by name with any attribute. Check theirs too: a `<g-emoji>`
   only for the comment's own icons (its `alias` and `fallback-src`), an `<svg>` only as a heading anchor's octicon.
+- **Each case's verdict, asserted** (Codex, review of the PR that made the oracle run the bundle; already so on main).
+  The oracle prints each case's verdict but does not check it: a case whose comment is an analysis error (a grammar
+  missing from the bundle, say) would render inert and pass without the hostile names in it. Give each case its
+  expected verdict and the findings it must show, and fail otherwise.
 
 ## The Python scope reader's hang on macOS: what is left
 

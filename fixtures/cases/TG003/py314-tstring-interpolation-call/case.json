@@ -1,0 +1,18 @@
+{
+  "description": "Codex, design review of the Python versions (round 1): a t-string's interpolation is evaluated where the t-string is, so `t\"{pytest.skip('pending')}\"` as the first statement of the test calls the skip. The statement is not exactly the call (F2): a WARN, never silence. The real runner skips the test.",
+  "kind": "positive",
+  "runner": "pytest",
+  "minPython": "3.14",
+  "expect": { "verdict": "WARN", "findings": [
+    { "rule": "TG003", "severity": "warn", "file": "test_parser.py", "line": 5, "test": "test_parses" }
+  ] },
+  "runnerEvidence": {
+    "tool": "pytest 8.4.2",
+    "base": {
+      "[\"test_parser.py\",\"test_parses\",1]": "passed"
+    },
+    "head": {
+      "[\"test_parser.py\",\"test_parses\",1]": "skipped"
+    }
+  }
+}

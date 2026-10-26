@@ -4,6 +4,7 @@
 // entry out of shape — is a reason (a WARN for the files), never an exception and never facts.
 import { describe, expect, it } from 'vitest';
 import { validateReply } from '../src/parse/py-scopes.js';
+import { pythonAtLeast } from './support/python.js';
 
 const GOOD_FILE = {
   ok: true,
@@ -19,7 +20,7 @@ const GOOD_FILE = {
   classes: [{ at: [4, 0], name: 'TestA', bases: 'none', why: null }],
 };
 const reply = (files: Record<string, unknown>, extra: Record<string, unknown> = {}): string =>
-  JSON.stringify({ protocol: 5, python: '3.12.3', supported: true, why: null, files, ...extra });
+  JSON.stringify({ protocol: 6, python: '3.12.3', supported: true, tested: true, why: null, files, ...extra });
 
 describe('a reply that follows the protocol', () => {
   it('gives each file its facts', () => {
@@ -31,8 +32,17 @@ describe('a reply that follows the protocol', () => {
   });
 
   it('an unsupported interpreter: no files, its reason', () => {
-    const r = validateReply(JSON.stringify({ protocol: 5, python: '3.14.0', supported: false, why: 'Python 3.14.0 is not a supported version', files: {} }), ['a']);
-    expect(r).toEqual({ ok: true, reply: { python: '3.14.0', supported: false, why: 'Python 3.14.0 is not a supported version', files: new Map() } });
+    const why = 'Python 3.10.12 is older than the oldest supported version (3.11)';
+    const r = validateReply(JSON.stringify({ protocol: 6, python: '3.10.12', supported: false, tested: false, why, files: {} }), ['a']);
+    expect(r).toEqual({ ok: true, reply: { python: '3.10.12', supported: false, tested: false, why, files: new Map() } });
+  });
+
+  it('an interpreter newer than those tested: its facts, and that it is not tested', () => {
+    const r = validateReply(reply({ a: GOOD_FILE }, { python: '3.16.0', tested: false }), ['a']);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.reply.tested).toBe(false);
+    expect(r.reply.files.get('a')).toEqual(GOOD_FILE);
   });
 });
 
@@ -45,6 +55,8 @@ describe('a reply that does not follow it, as a whole: a reason, never an except
     ['another protocol', reply({ a: GOOD_FILE }, { protocol: 1 })],
     ['no python version', reply({ a: GOOD_FILE }, { python: 3.12 })],
     ['no supported flag', reply({ a: GOOD_FILE }, { supported: 'yes' })],
+    ['no tested flag', reply({ a: GOOD_FILE }, { tested: undefined })],
+    ['protocol 5 (no tested flag)', reply({ a: GOOD_FILE }, { protocol: 5, tested: undefined })],
     ['why not a string', reply({ a: GOOD_FILE }, { why: 7 })],
     ['files not a map', reply({ a: GOOD_FILE }, { files: [GOOD_FILE] })],
     ['fewer files than asked', reply({ a: GOOD_FILE })],
@@ -108,11 +120,13 @@ describe('Python decodes the bytes itself (PEP 263): only UTF-8 source is read',
     ['`# coding: cp1252`, ASCII only', Buffer.concat([Buffer.from('# coding: cp1252\n'), body]), false],
     ['a BOM and `# coding: latin-1`', Buffer.concat([Buffer.from([0xef, 0xbb, 0xbf]), Buffer.from('# coding: latin-1\n'), body]), false],
     ['an unknown codec', Buffer.concat([Buffer.from('# coding: no-such-codec\n'), body]), false],
-    // Python's import (compile() of the bytes, as pytest and unittest load a module) reads a comment's bytes loosely.
-    ['bytes that are not UTF-8 in a comment (import reads them)', Buffer.concat([body, Buffer.from([0x23, 0x20, 0xe9, 0x0a])]), true],
+    // Python's import (compile() of the bytes, as pytest and unittest load a module) reads a comment's bytes loosely
+    // before 3.14, and refuses them from 3.14 on (a SyntaxError: the module does not import, pytest reports a collection
+    // error): the reader says what the interpreter does.
+    ['bytes that are not UTF-8 in a comment (import reads them before Python 3.14)', Buffer.concat([body, Buffer.from([0x23, 0x20, 0xe9, 0x0a])]), 'before 3.14'],
     ['bytes that are not UTF-8 in a string, no declaration', Buffer.concat([body, Buffer.from([0x78, 0x3d, 0x22, 0xe9, 0x22, 0x0a])]), false],
   ] as const)('%s', async (_why, bytes, read) => {
     const f = await facts(bytes);
-    expect(f.ok).toBe(read);
+    expect(f.ok).toBe(read === 'before 3.14' ? !pythonAtLeast('3.14') : read);
   });
 });

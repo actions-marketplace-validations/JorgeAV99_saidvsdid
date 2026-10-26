@@ -147,9 +147,16 @@ function censusKind(id: Node, resolver: PyResolver): MarkerKind | null {
   return null;
 }
 
-/** A docstring: a statement that is a string literal alone. */
+/**
+ * A docstring as Python defines it: a statement that is a str constant alone — one string literal, or an implicit
+ * concatenation of them, none with an `f`, `t` (PEP 750) or `b` prefix: an f-string is a JoinedStr and a t-string a
+ * TemplateStr, which evaluate their interpolations, and bytes are not str (`ast.get_docstring` reads none of them).
+ */
 function isDocstring(stmt: Node): boolean {
-  return stmt.type === 'expression_statement' && stmt.namedChildren.length === 1 && (stmt.namedChildren[0]!.type === 'string' || stmt.namedChildren[0]!.type === 'concatenated_string');
+  if (stmt.type !== 'expression_statement' || stmt.namedChildren.length !== 1) return false;
+  const value = stmt.namedChildren[0]!;
+  const parts = value.type === 'string' ? [value] : value.type === 'concatenated_string' ? value.namedChildren : [];
+  return parts.length > 0 && parts.every((p) => p.type === 'string' && /^[rRuU]*['"]/.test(p.text));
 }
 
 /** The first statement of a body, after its docstring (comments aside); null for an empty body. */

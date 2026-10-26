@@ -1,0 +1,16 @@
+{
+  "description": "Codex, design review of the Python versions (round 1): Python 3.15's lazy import (PEP 810). Python compiles the file, but tree-sitter-python (0.25.0, the newest release) has no `lazy` keyword: the file has syntax errors for the tree that finds the forms, so its tests may be hidden or invented and the comparison is UNVERIFIABLE — never OK, never a FAIL (docs/rules.md, *Known limits of attribution*; backlog). The real runner skips the test.",
+  "kind": "positive",
+  "runner": "pytest",
+  "minPython": "3.15",
+  "expect": { "verdict": "UNVERIFIABLE", "unverifiable": [{"file":"test_parser.py","side":"base"},{"file":"test_parser.py","side":"head"}], "findings": [] },
+  "runnerEvidence": {
+    "tool": "pytest 8.4.2",
+    "base": {
+      "[\"test_parser.py\",\"test_parses\",1]": "passed"
+    },
+    "head": {
+      "[\"test_parser.py\",\"test_parses\",1]": "skipped"
+    }
+  }
+}

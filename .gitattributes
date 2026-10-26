@@ -6,3 +6,5 @@ fixtures/sessions/** -text
 fixtures/cases/TG003/py-latin1-coding-declared/** -text
 fixtures/cases/TG003/py-bom-coding-mismatch/** -text
 fixtures/cases/TG003/py-lone-cr-line-breaks/** -text
+# The GitHub Action's bundle (scripts/build-action.mjs; full-ci's check-dist rebuilds and compares it).
+dist/action/** linguist-generated=true

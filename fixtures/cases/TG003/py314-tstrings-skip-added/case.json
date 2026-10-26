@@ -1,0 +1,26 @@
+{
+  "description": "Python 3.14 syntax inside the tests (PEP 750 t-strings with a format spec, a conversion and expressions; PEP 758 `except A, B:`; PEP 649 deferred annotations naming pytest): the reader reads the file and loses no test. The head adds the canonical `@pytest.mark.skip` to `test_renders`: FAIL, as on any other version; the other four tests are untouched.",
+  "kind": "positive",
+  "runner": "pytest",
+  "minPython": "3.14",
+  "expect": { "verdict": "FAIL", "findings": [
+    { "rule": "TG003", "severity": "fail", "file": "test_render.py", "line": 15, "test": "test_renders", "ids": [["test_renders",1]] }
+  ] },
+  "runnerEvidence": {
+    "tool": "pytest 8.4.2",
+    "base": {
+      "[\"test_render.py\",\"test_deferred_annotation\",1]": "passed",
+      "[\"test_render.py\",\"test_except_without_parentheses\",1]": "passed",
+      "[\"test_render.py\",\"test_format_spec\",1]": "passed",
+      "[\"test_render.py\",\"test_interpolations\",1]": "passed",
+      "[\"test_render.py\",\"test_renders\",1]": "passed"
+    },
+    "head": {
+      "[\"test_render.py\",\"test_deferred_annotation\",1]": "passed",
+      "[\"test_render.py\",\"test_except_without_parentheses\",1]": "passed",
+      "[\"test_render.py\",\"test_format_spec\",1]": "passed",
+      "[\"test_render.py\",\"test_interpolations\",1]": "passed",
+      "[\"test_render.py\",\"test_renders\",1]": "skipped"
+    }
+  }
+}

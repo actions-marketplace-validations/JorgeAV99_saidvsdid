@@ -162,7 +162,7 @@ describe('a name of Object.prototype read from the input is no token, marker, ru
   });
 
   it.each(PROTOTYPE_NAMES)("the Python scope reader's reply: a name `%s` the reply does not list is not an import", (name) => {
-    const reply = JSON.stringify({ protocol: 5, python: '3.12.3', supported: true, why: null, files: { a: { ok: true, names: {}, aliases: [], methods: [], bound: {}, written: {}, literals: [], binds: {}, star: null, dynamic: [], classes: [] } } });
+    const reply = JSON.stringify({ protocol: 6, python: '3.12.3', supported: true, tested: true, why: null, files: { a: { ok: true, names: {}, aliases: [], methods: [], bound: {}, written: {}, literals: [], binds: {}, star: null, dynamic: [], classes: [] } } });
     const r = validateReply(reply, ['a']);
     expect(r.ok).toBe(true);
     const facts = r.ok ? r.reply.files.get('a')! : null;

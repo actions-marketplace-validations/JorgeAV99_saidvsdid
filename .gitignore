@@ -1,5 +1,7 @@
 node_modules/
-dist/
+# dist/action/ is the GitHub Action's bundle, versioned (scripts/build-action.mjs); the rest of dist/ is the CLI's build.
+/dist/*
+!/dist/action/
 coverage/
 fixtures/.repos/
 bench/.cache/
@@ -9,3 +11,5 @@ bench/results/
 fixtures/.runner/
 __pycache__/
 test-results/
+# Codex's local review folders (.review-release/, .review-pr11/, …): never versioned.
+/.review-*/

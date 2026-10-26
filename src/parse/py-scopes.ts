@@ -1,10 +1,12 @@
 // Python's own reading of a file's names (python/saidvsdid_scopes.py: `ast` and `symtable`), run in
 // calls of at most `CALL_BYTES` of source, one interpreter each, and cached by content
 // for the life of the process. The interpreter is `SAIDVSDID_PYTHON` when set, else the first of
-// `python3`, `python` that runs the script; only the versions the script lists are supported
-// (3.9–3.13). The script receives each file's bytes and Python decodes them (PEP 263): a file whose
+// `python3`, `python` that runs the script; a version older than the script's minimum (3.11) is not
+// supported, and one newer than those CI tests (3.11–3.15) runs as any other (the reply says it is not
+// tested, and the report records it). The script receives each file's bytes and Python decodes them (PEP 263): a file whose
 // encoding is not UTF-8 is not read. No interpreter, another version, a file Python does not compile
-// or does not decode as UTF-8, or a reply that does not follow the protocol: the file's names are
+// or does not decode as UTF-8, a self-check that fails on the interpreter, or a reply that does not
+// follow the protocol: the file's names are
 // never certain, and the file gets one WARN (src/check.ts) — never a FAIL, never silence, never an
 // exception.
 import { spawnSync, type SpawnSyncReturns } from 'node:child_process';
@@ -13,12 +15,12 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { ASSETS } from '../assets.js';
 import { ownRecord } from '../util/names.js';
 
-// The script ships with the package (package.json "files"): python/ at its root, two levels above
-// src/parse/ (tests) and dist/parse/ (published), like the grammars.
-const SCRIPT = fileURLToPath(new URL('../../python/saidvsdid_scopes.py', import.meta.url));
-const PROTOCOL = 5;
+// The script ships with the package (package.json "files"): python/ at its root (src/assets.ts), like the grammars.
+const SCRIPT = fileURLToPath(new URL('python/saidvsdid_scopes.py', ASSETS));
+const PROTOCOL = 6;
 /**
  * How the files of a run are handed to the interpreter, and how long a call may take (measured; docs/rules.md, *Python*).
  * - A call holds at most `CALL_BYTES` of source (a file larger than that goes alone), so that each call is short.
@@ -111,7 +113,7 @@ export interface PyClassFact {
 }
 
 /** The interpreter that reads Python files in this process, once found. */
-export type PyRuntime = { known: true; command: string; version: string } | { known: false; why: string; version: string | null };
+export type PyRuntime = { known: true; command: string; version: string; tested: boolean } | { known: false; why: string; version: string | null };
 
 let runtime: PyRuntime | undefined;
 const cache = new Map<string, PyFacts>();
@@ -121,6 +123,8 @@ const CACHE_LIMIT = 4096;
 export interface PyReply {
   python: string;
   supported: boolean;
+  /** Whether the interpreter is one of the versions CI tests (a newer one is read all the same). */
+  tested: boolean;
   why: string | null;
   /** One entry per file asked, by id. */
   files: Map<string, PyFacts>;
@@ -214,6 +218,7 @@ export function validateReply(stdout: string, ids: readonly string[]): { ok: tru
   if (raw['protocol'] !== PROTOCOL) return { ok: false, why: `protocol ${JSON.stringify(raw['protocol'])}, expected ${PROTOCOL}` };
   if (!isStr(raw['python'])) return { ok: false, why: 'no python version' };
   if (typeof raw['supported'] !== 'boolean') return { ok: false, why: 'no supported flag' };
+  if (typeof raw['tested'] !== 'boolean') return { ok: false, why: 'no tested flag' };
   if (strOrNull(raw['why'])) return { ok: false, why: 'why: not a string or null' };
   if (!isObject(raw['files'])) return { ok: false, why: 'no files map' };
   const files = new Map<string, PyFacts>();
@@ -224,7 +229,7 @@ export function validateReply(stdout: string, ids: readonly string[]): { ok: tru
     if (keys.length !== asked.size || keys.some((k) => !asked.has(k))) return { ok: false, why: `${keys.length} files in the reply for ${asked.size} asked` };
     for (const id of ids) files.set(id, fileFacts(entries[id]));
   }
-  return { ok: true, reply: { python: raw['python'], supported: raw['supported'], why: raw['why'] as string | null, files } };
+  return { ok: true, reply: { python: raw['python'], supported: raw['supported'], tested: raw['tested'], why: raw['why'] as string | null, files } };
 }
 
 /** The first attempt's limit for a call of `bytes` of source, and the retry's. */
@@ -344,7 +349,7 @@ export function pythonRuntime(): PyRuntime {
       tried.push(`${command}: ${reply.error}`);
       continue;
     }
-    runtime = reply.supported ? { known: true, command, version: reply.python } : { known: false, why: reply.why ?? `Python ${reply.python} is not supported`, version: reply.python };
+    runtime = reply.supported ? { known: true, command, version: reply.python, tested: reply.tested } : { known: false, why: reply.why ?? `Python ${reply.python} is not supported`, version: reply.python };
     return runtime;
   }
   runtime = { known: false, why: `no Python interpreter runs the scope reader (${tried.join('; ')}); set SAIDVSDID_PYTHON`, version: null };

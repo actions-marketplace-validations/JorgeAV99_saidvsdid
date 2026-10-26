@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   push:
-    name: test, fixtures vs. real runners, Python 3.9/3.13, dogfood (ubuntu, node 22)
+    name: test, fixtures vs. real runners, Python 3.11/3.15, dogfood (ubuntu, node 22)
     runs-on: ubuntu-latest
     # The dogfood step comments on the pull request.
     permissions:
@@ -28,23 +28,24 @@ jobs:
       pull-requests: write
     timeout-minutes: 40
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
-      # The last version listed is `python`: the suite's interpreter (the TG007 --f2p fixtures run pytest too).
-      - uses: actions/setup-python@v5
+      # The last version listed is `python`: the suite's interpreter (the TG007 --f2p fixtures run pytest too), and the
+      # runner-evidence recorder's. It is the newest supported version, so that every fixture's syntax compiles (a
+      # fixture with newer syntax carries `minPython`).
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: |
-            3.9
-            3.13
-            3.12
+            3.11
+            3.15
           cache: pip
           cache-dependency-path: .github/requirements-ci.txt
-      - run: for v in 3.9 3.13 3.12; do "python$v" -m pip install -r .github/requirements-ci.txt; done
+      - run: for v in 3.11 3.15; do "python$v" -m pip install -r .github/requirements-ci.txt; done
       - run: npm ci
       - run: npm run typecheck
       - name: Test suite, and the fixtures against the real runners alongside
@@ -65,21 +66,22 @@ jobs:
           grep -E '^(MISMATCH|UNRECORDABLE)' -A2 "$RUNNER_TEMP/runner-evidence.log" || true
           echo "test suite: exit $suite; fixtures vs. real runners: exit $fixtures"
           test "$suite" -eq 0 && test "$fixtures" -eq 0
-      # The Python scope reader (python/saidvsdid_scopes.py) on the oldest and newest versions it lists as supported:
-      # the resolver's tests and every fixture with a Python file (those that need newer syntax, PEP 695, stand down
-      # below their `minPython`). 3.10–3.12 run in full-ci.yml. A version that fails leaves the supported list.
-      - name: Python 3.9 scope reader
+      # The Python scope reader (python/saidvsdid_scopes.py) on the oldest and the newest supported versions (python.org's
+      # supported CPython versions; docs/rules.md, *Python*): the resolver's tests and every fixture with a Python file
+      # (those that need newer syntax — PEP 695, t-strings — stand down below their `minPython`). full-ci.yml runs every
+      # supported version.
+      - name: Python 3.11 scope reader
         if: success() || failure()
         env:
-          SAIDVSDID_PYTHON: python3.9
-          SAIDVSDID_PYTHON_MATRIX: '3.9'
+          SAIDVSDID_PYTHON: python3.11
+          SAIDVSDID_PYTHON_MATRIX: '3.11'
           SAIDVSDID_FIXTURES: python
         run: npx vitest run test/py-exhaustive.test.ts test/py-protocol.test.ts test/py-unavailable.test.ts test/positions.test.ts test/runner-binding.test.ts test/parse.test.ts test/fixtures.test.ts
-      - name: Python 3.13 scope reader
+      - name: Python 3.15 scope reader
         if: success() || failure()
         env:
-          SAIDVSDID_PYTHON: python3.13
-          SAIDVSDID_PYTHON_MATRIX: '3.13'
+          SAIDVSDID_PYTHON: python3.15
+          SAIDVSDID_PYTHON_MATRIX: '3.15'
           SAIDVSDID_FIXTURES: python
         run: npx vitest run test/py-exhaustive.test.ts test/py-protocol.test.ts test/py-unavailable.test.ts test/positions.test.ts test/runner-binding.test.ts test/parse.test.ts test/fixtures.test.ts
       - run: npm run build

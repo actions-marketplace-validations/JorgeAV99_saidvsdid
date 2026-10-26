@@ -16,7 +16,10 @@ export function pythonAtLeast(version: string): boolean {
 
 /** Why a test needing Python `version` may not stand down here, or null when it may (an older interpreter, outside the main CI). */
 export function olderPythonRefused(version: string): string | null {
-  if (process.env['CI'] && process.env['SAIDVSDID_PYTHON_MATRIX'] === undefined) return `CI needs Python ${version} (SAIDVSDID_PYTHON)`;
+  if (process.env['CI'] && process.env['SAIDVSDID_PYTHON_MATRIX'] === undefined) {
+    const rt = pythonRuntime();
+    return `CI needs Python ${version} (SAIDVSDID_PYTHON)${rt.known ? `, found ${rt.version}` : `: ${rt.why}`}`;
+  }
   return null;
 }
 

@@ -68,7 +68,10 @@ list of forbidden forms to complete.
   decorator on a class, a `pytestmark` and the marks of a `pytest.param`
   row are not on the test function: `warn`.
 - **F2 — a call in the test's body.** It is the first statement of the
-  body (after a docstring, in Python), and the statement is exactly the
+  body (after a docstring, in Python: a str constant alone — string literals,
+  none an f-string, a t-string or bytes, which are not docstrings and whose
+  interpolations run: `TG003/py-fstring-before-skiptest`,
+  `py314-tstring-before-skiptest`), and the statement is exactly the
   call: a Python expression statement whose value is the call, or
   `raise X` / `raise X(…)` with no `from`; in JS an expression statement
   that is the call or `await` + the call, in the callback's block body. Its
@@ -541,12 +544,24 @@ per MB on Windows, so a full call has 10 to 15 times what it needs on Linux and
 6 times the earlier reader's rate on Windows. An attempt that reaches its
 limit is tried once more with at least 300 s (the limit a whole run had
 before), so that whatever the earlier reader read is still read. The interpreter is `SAIDVSDID_PYTHON` when set, else
-the first of `python3`, `python` that runs the script; the **supported versions
-are 3.9 to 3.13** (CI runs the Python tests and fixtures on each of them), and
-the one used is recorded in the report (`tool.scopes.python`). Another version,
-no interpreter, a reader that fails or reaches its limit twice, or a file that
-interpreter does not compile (a syntax error,
-PEP 695 syntax before 3.12, `match` before 3.10) is a **file-level `WARN`**
+the first of `python3`, `python` that runs the script, and the one used is
+recorded in the report (`tool.scopes.python`).
+
+**Python versions.** The supported versions are the CPython versions
+python.org supports (devguide.python.org/versions): **3.11 to 3.15** today,
+each run in CI (the oldest and the newest on every push, all of them in
+`full-ci`). An interpreter **older than 3.11** is refused as a whole. There
+is **no newest version**: an interpreter newer than those CI tests runs the
+reader as any other — what keeps its reading certain is what keeps a tested
+one certain (the self-check of every `ast` node class, below; symtable's
+predicates read against closed sets; a `WARN` for anything that fails) — and
+the report says so (`tool.scopes.python_untested`), with the same verdicts.
+When the version moves on python.org (one reaches its end of life, a new one
+is released), the minimum, the tested list and CI move with it.
+An older version, no interpreter, a self-check that fails on the interpreter,
+a reader that fails or reaches its limit twice, or a file that
+interpreter does not compile (a syntax error, PEP 695 syntax before 3.12,
+t-strings before 3.14) is a **file-level `WARN`**
 (`reason: "scope_unavailable"`, one finding per file, never silence) and
 nothing in the file is certain. So is:
 
@@ -556,8 +571,9 @@ nothing in the file is certain. So is:
   (`TG003/py-latin1-coding-declared`, `py-bom-coding-mismatch`): the tree that
   finds the forms reads UTF-8, so another decoding would be another file.
   Bytes that are not UTF-8 inside a comment are read as Python's import reads
-  them (it compiles the bytes and does not decode comments); inside code or a
-  string the file does not compile;
+  them: before 3.14 it compiles the bytes and does not decode comments; from
+  3.14 on it refuses them (the module does not import), so the file is a
+  `WARN`. Inside code or a string the file does not compile;
 - a **reply of the script that does not follow its protocol** — not JSON, a
   field missing or of another type, another protocol, more or fewer files than
   asked, one file's entry out of shape — a `WARN` for each file it concerns,
@@ -752,6 +768,10 @@ function returns: `key = lambda: "skip"` holds no string).
   version where it fails, and a node it does not know in a file makes the file
   a `WARN`. Every `Name` stored or deleted must be explained by a binder the
   script reads; one that is not makes its name uncertain.
+  The self-check runs on every interpreter, one newer than those tested
+  included: a node class a later Python adds, or a field that may bind a name
+  on a class the script reads as binding none, refuses that version as a
+  whole (a `WARN` per Python file) until the script classifies it.
   `test/py-exhaustive.test.ts` runs the self-check on the interpreter that reads
   the files and on every other supported one found, and a probe for each form
   that binds a name (it makes `pytest` uncertain) and for each binding with a
@@ -763,11 +783,14 @@ function returns: `key = lambda: "skip"` holds no string).
   `test/ts-exhaustive.test.ts` holds the map to the compiler's SyntaxKind list
   and runs a probe for each operator and each binding form with a value, rooted
   at a runner import and at a test context (node:test's `t`, vitest's `ctx`).
-- **Python versions**: CI's `python-versions` job runs the Python resolver
-  tests and every fixture with a Python file on 3.9, 3.10, 3.11, 3.12 and 3.13;
-  a fixture whose syntax is newer carries `minPython` (`match`: 3.10; PEP 695:
-  3.12) and stands down on an older interpreter there (outside that job, CI
-  refuses to stand down).
+- **Python versions**: CI runs the Python resolver tests and every fixture
+  with a Python file on the oldest and the newest supported version on every
+  push (`ci.yml`), and on each of 3.11, 3.12, 3.13, 3.14 and 3.15 before a
+  merge (`full-ci.yml`, `python-versions`); the suite and the runner-evidence
+  recorder run on the newest. A fixture whose syntax is newer carries
+  `minPython` (PEP 695: 3.12; t-strings, `except A, B:`: 3.14; lazy imports:
+  3.15) and stands down on an older interpreter there (outside those steps,
+  CI refuses to stand down).
 - **Positions** between the parsers are exact: Python's `ast` gives UTF-8
   columns on its own lines (`\r\n`, `\r`, `\n`), tree-sitter and the TypeScript
   compiler UTF-16 code units (`src/parse/positions.ts`,
@@ -781,7 +804,11 @@ runners), `test.extend(…)` and helpers that re-export the runner, a describe
 factory's parameter (vitest passes its `test`), tests declared in a helper
 function called at the top level, a module-level import inside a block
 (`try: import pytest`), any second binding of a runner name in a Python file
-(the rule is about the file), Python outside 3.9–3.13. Where compilers disagree
+(the rule is about the file), Python older than 3.11. Python 3.15's **lazy
+imports** (PEP 810, `lazy import pytest`): Python reads them, but
+tree-sitter-python (0.25.0, its newest release) has no `lazy` keyword, so the
+file has syntax errors for the tree that finds the forms and its comparison
+is `UNVERIFIABLE` (`TG003/py315-lazy-import-unverifiable`; backlog). Where compilers disagree
 (esbuild, which vitest uses, does not share a namespace's exported names across
 its blocks as `tsc` does: `TG003/ts-namespace-merged-export`), the reading is
 not certain. Setup files, `conftest.py` and code in the file itself that mutate

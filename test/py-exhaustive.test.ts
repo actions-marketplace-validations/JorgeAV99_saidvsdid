@@ -3,7 +3,8 @@
 // - the script classifies every node class of the running interpreter's `ast` (BINDERS, NONE), and a
 //   class with an identifier or a target field is a binder or says why not (--self-check), for the
 //   interpreter that reads the files and every other supported one found on this machine;
-// - a version outside the supported list is refused as a whole (a WARN per file, never a reading);
+// - a version older than the script's minimum, or one where the self-check fails, is refused as a whole (a WARN per
+//   file, never a reading); one newer than those CI tests is read as any other, and says it is not tested;
 // - a probe for each form that binds a name: binding `pytest` makes `@pytest.mark.skip` uncertain, and
 //   binding a name to a value that contains a form of the vocabulary makes its use read as the form
 //   (at least a WARN), never silence.
@@ -31,7 +32,7 @@ describe('the script classifies every ast node class', () => {
   it('the interpreter that reads the files is the one the run asks for (the CI matrix: SAIDVSDID_PYTHON_MATRIX)', () => {
     const matrix = process.env['SAIDVSDID_PYTHON_MATRIX'];
     if (matrix !== undefined) expect(runtime().version.startsWith(`${matrix}.`), runtime().version).toBe(true);
-    else expect(runtime().version).toMatch(/^3\.(9|1[0-3])\./);
+    else expect(runtime().version).toMatch(/^3\.1[1-5]\./);
   });
 
   it('for the interpreter that reads the files', () => {
@@ -42,7 +43,7 @@ describe('the script classifies every ast node class', () => {
 
   it('for every other supported interpreter on this machine', () => {
     const seen: string[] = [];
-    for (const minor of [9, 10, 11, 12, 13]) {
+    for (const minor of [11, 12, 13, 14, 15]) {
       const r = spawnSync(process.platform === 'win32' ? 'py' : `python3.${minor}`, process.platform === 'win32' ? [`-3.${minor}`, '-I', SCRIPT, '--self-check'] : ['-I', SCRIPT, '--self-check'], { encoding: 'utf8' });
       if (r.error || r.status !== 0) continue;
       const out = JSON.parse(r.stdout) as { python: string; why: string | null };
@@ -52,19 +53,40 @@ describe('the script classifies every ast node class', () => {
     console.log(`self-check passed on: ${seen.join(', ') || 'no other interpreter found'}`);
   });
 
-  it('refuses a version outside its list, as a whole', () => {
-    const patch = [
+  /** The script's reply to one file, run with `patch` applied to the module first (its constants). */
+  const patched = (patch: string): { supported: boolean; tested: boolean; why: string | null; files: Record<string, { ok: boolean }> } => {
+    const code = [
       'import importlib.util, sys',
       'sys.dont_write_bytecode = True',
       `spec = importlib.util.spec_from_file_location("saidvsdid_scopes", ${JSON.stringify(SCRIPT)})`,
       'm = importlib.util.module_from_spec(spec)',
       'spec.loader.exec_module(m)',
-      'm.SUPPORTED = ()',
+      patch,
       'm.main()',
     ].join('\n');
-    const out = JSON.parse(execFileSync(runtime().command, ['-c', patch], { input: JSON.stringify({ files: [{ id: 'a', source: 'import pytest\n' }] }), encoding: 'utf8' })) as { supported: boolean; why: string; files: object };
+    const source = Buffer.from('import pytest\n').toString('base64');
+    return JSON.parse(execFileSync(runtime().command, ['-c', code], { input: JSON.stringify({ files: [{ id: 'a', source }] }), encoding: 'utf8' }));
+  };
+
+  it('refuses a version older than its minimum, as a whole', () => {
+    const out = patched('m.MINIMUM = (99, 0)');
     expect(out.supported).toBe(false);
-    expect(out.why).toMatch(/is not a supported version/);
+    expect(out.why).toMatch(/is older than the oldest supported version \(99\.0\)/);
+    expect(out.files).toEqual({});
+  });
+
+  it('reads a version newer than those it is tested on, and says so', () => {
+    const out = patched('m.TESTED = ()');
+    expect(out.supported).toBe(true);
+    expect(out.tested).toBe(false);
+    expect(out.why).toBeNull();
+    expect(out.files['a']?.ok).toBe(true);
+  });
+
+  it('refuses a version whose ast it does not classify (what a newer Python may add), as a whole', () => {
+    const out = patched('m.NONE.discard("Pass")');
+    expect(out.supported).toBe(false);
+    expect(out.why).toBe('ast node Pass is not classified');
     expect(out.files).toEqual({});
   });
 });

@@ -1,9 +1,9 @@
 import { readFileSync } from 'node:fs';
+import { ASSETS } from './assets.js';
 
-// docs/rules.md ships with the package; src/explain.ts and dist/explain.js are both one
-// level below the package root. The docs are the single source of truth for
+// docs/rules.md ships with the package (src/assets.ts). The docs are the single source of truth for
 // rule explanations, so `explain` and docs/rules.md cannot drift apart.
-const RULES_DOC = new URL('../docs/rules.md', import.meta.url);
+const RULES_DOC = new URL('docs/rules.md', ASSETS);
 
 /** The `## <id> ...` section of docs/rules.md, or null if there is none. */
 export function explainRule(id: string, doc = readFileSync(RULES_DOC, 'utf8')): string | null {

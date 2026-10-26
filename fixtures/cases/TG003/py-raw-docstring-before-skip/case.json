@@ -1,0 +1,17 @@
+{
+  "description": "A raw string is a str constant: `r\"\"\"…\"\"\"` is the test's docstring, and `pytest.skip(\"pending\")` after it is the first statement (F2): FAIL. The real runner skips it.",
+  "kind": "positive",
+  "runner": "pytest",
+  "expect": { "verdict": "FAIL", "findings": [
+    { "rule": "TG003", "severity": "fail", "file": "test_parser.py", "line": 6, "test": "test_parses", "ids": [["test_parses",1]] }
+  ] },
+  "runnerEvidence": {
+    "tool": "pytest 8.4.2",
+    "base": {
+      "[\"test_parser.py\",\"test_parses\",1]": "passed"
+    },
+    "head": {
+      "[\"test_parser.py\",\"test_parses\",1]": "skipped"
+    }
+  }
+}

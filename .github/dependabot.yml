@@ -1,0 +1,28 @@
+# Keeps the pinned versions current: every external action is pinned by its full commit SHA with the release it is as a
+# comment (`uses: actions/checkout@<sha> # v4.4.0`; test/pinned-actions.test.ts), and Dependabot updates the SHA and the
+# comment together. `/` covers .github/workflows and the root action.yml; npm, the root package.json and its lockfile.
+#
+# Each ecosystem's minor and patch updates come together, in one pull request a week. A major update of an action comes
+# alone, in a pull request of its own (its runtime or its inputs may change: reviewed one by one). npm's major updates
+# are not proposed (typescript, vitest, @types/node… change what the analyser and the suite read: a change of its own,
+# decided by hand). Security updates are neither grouped nor ignored by this file (its groups and ignore rules are for
+# version updates); the repository's settings decide whether GitHub groups them.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions-minor-and-patch:
+        update-types: [minor, patch]
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      npm-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: '*'
+        update-types: ['version-update:semver-major']

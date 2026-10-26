@@ -1,14 +1,16 @@
 // The GitHub Action (action.yml, src/action/run.ts, src/report/comment.ts) on the synthetic repositories of
 // fixtures/action/: the comment a reviewer reads, one comment per pull request, and a check that stays green whatever
 // the verdict unless `fail-on` asks otherwise.
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { cpSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Parser, type Node } from 'commonmark';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { parse as parseYaml } from 'yaml';
 import { buildFixtureRepo, type FixtureRepo } from '../fixtures/build.js';
-import { ACTIONS_BOT, blocks, commandData, parseExclude, parseFailOn, runAction, type ActionResult } from '../src/action/run.js';
+import { ACTIONS_BOT, actionEnv, blocks, commandData, parseExclude, parseFailOn, runAction, type ActionResult } from '../src/action/run.js';
 import { runCheck } from '../src/check.js';
 import { COMMENT_MARKER, GROUPS, literal, MAX_TEXT, renderComment, sanitize } from '../src/report/comment.js';
 import type { Report, Verdict } from '../src/report/model.js';
@@ -360,8 +362,61 @@ describe('the Action', () => {
   });
 });
 
+// The bundle action.yml runs (dist/action/, versioned; full-ci's check-dist rebuilds it and compares), copied alone to a
+// directory of its own: it reads nothing outside it (the grammars, web-tree-sitter's runtime, the Python scope reader),
+// and on the fixture repositories it writes what the source writes.
+describe('the bundle (dist/action/index.js), alone', () => {
+  const BUNDLE = fileURLToPath(new URL('../dist/action/', import.meta.url));
+
+  it.each(['demo', 'pytest'] as const)('%s: the same summary, outputs and exit code as the source', async (c) => {
+    expect(existsSync(join(BUNDLE, 'index.js')), 'dist/action/index.js: node scripts/build-action.mjs').toBe(true);
+    const alone = mkdtempSync(join(tmp, 'bundle-'));
+    cpSync(BUNDLE, join(alone, 'action'), { recursive: true });
+    const dir = mkdtempSync(join(tmp, 'bundle-run-'));
+    const r = repos[c];
+    writeFileSync(join(dir, 'event.json'), JSON.stringify({ pull_request: { number: 7, base: { sha: r.base }, head: { sha: r.head } } }));
+    writeFileSync(join(dir, 'summary.md'), '');
+    writeFileSync(join(dir, 'output'), '');
+    const run = spawnSync(process.execPath, [join(alone, 'action', 'index.js')], {
+      cwd: r.repo,
+      encoding: 'utf8',
+      env: {
+        ...process.env,
+        GITHUB_EVENT_PATH: join(dir, 'event.json'),
+        GITHUB_REPOSITORY: 'octo/demo',
+        GITHUB_WORKSPACE: r.repo,
+        GITHUB_STEP_SUMMARY: join(dir, 'summary.md'),
+        GITHUB_OUTPUT: join(dir, 'output'),
+        GITHUB_SERVER_URL: 'https://github.com',
+        'INPUT_FAIL-ON': 'fail',
+        INPUT_EXCLUDE: '',
+        INPUT_COMMENT: 'false',
+        'INPUT_GITHUB-TOKEN': '',
+      },
+    });
+    const source = await act(c, { 'fail-on': 'fail', comment: 'false' });
+    expect(run.stderr).toBe('');
+    expect(run.status).toBe(source.result.exitCode);
+    expect(readFileSync(join(dir, 'summary.md'), 'utf8')).toBe(source.summary);
+    expect(readFileSync(join(dir, 'output'), 'utf8')).toBe(source.output);
+  }, 120_000);
+});
+
 describe('action.yml', () => {
   const yml = readFileSync(new URL('../action.yml', import.meta.url), 'utf8');
+
+  // GitHub refuses a manifest that is not valid YAML before any step runs (an unquoted `pull-requests: write` in a
+  // description did: the probe pull request's jobs failed in "Set up job"). Parsed strictly, as a whole.
+  it('is valid YAML, and its manifest is what GitHub reads: inputs with their defaults, outputs, a node24 main', () => {
+    const doc = parseYaml(yml, { strict: true, uniqueKeys: true }) as Record<string, unknown>;
+    expect(Object.keys(doc).sort()).toEqual(['branding', 'description', 'inputs', 'name', 'outputs', 'runs']);
+    const inputs = doc['inputs'] as Record<string, { description: string; required: boolean; default: string }>;
+    expect(Object.fromEntries(Object.entries(inputs).map(([k, v]) => [k, v.default]))).toEqual({ 'fail-on': 'none', exclude: '', comment: 'true', 'github-token': '${{ github.token }}' });
+    for (const v of Object.values(inputs)) expect(typeof v.description === 'string' && v.required === false).toBe(true);
+    expect(Object.keys(doc['outputs'] as object)).toEqual(['verdict', 'exit-code', 'comment-url']);
+    expect(doc['runs']).toEqual({ using: 'node24', main: 'dist/action/index.js' });
+    expect(existsSync(new URL('../dist/action/index.js', import.meta.url))).toBe(true);
+  });
 
   it("its description fits the Marketplace's limit (under 125 characters), quoted (it holds ': ')", () => {
     const description = /^description: '([^'\n]*)'\n/m.exec(yml)?.[1];
@@ -369,12 +424,25 @@ describe('action.yml', () => {
     expect([...description!].length).toBeLessThan(125);
   });
 
-  it('declares the inputs, with fail-on off by default, and runs the built entry point', () => {
+  it("declares the inputs, with fail-on off by default, and runs the versioned bundle with GitHub's Node.js 24", () => {
     expect(yml).toMatch(/fail-on:\n {4}description: .*\n {4}required: false\n {4}default: none\n/);
     expect(yml).toMatch(/comment:\n {4}description: .*\n {4}required: false\n {4}default: 'true'\n/);
-    expect(yml).toContain('INPUT_FAIL_ON: ${{ inputs.fail-on }}');
-    expect(yml).toContain('node "$GITHUB_ACTION_PATH/dist/action/main.js"');
+    expect(yml).toMatch(/github-token:\n {4}description: .*\n {4}required: false\n {4}default: \$\{\{ github\.token \}\}\n/);
+    expect(yml).toMatch(/\nruns:\n {2}using: node24\n {2}main: dist\/action\/index\.js\n$/);
+    // Nothing is installed or built in the user's repository: no step, no shell.
+    expect(yml).not.toMatch(/\n\s*(?:steps|run|shell):/);
     expect(readFileSync(new URL('../src/action/main.ts', import.meta.url), 'utf8')).toContain('runAction(');
+  });
+
+  it('reads its inputs as GitHub gives them to a JavaScript action (hyphens kept), and the token from its input', () => {
+    expect(actionEnv({ 'INPUT_FAIL-ON': 'warn', 'INPUT_GITHUB-TOKEN': 't', INPUT_COMMENT: 'false', INPUT_EXCLUDE: 'a/**' })).toEqual({
+      'INPUT_FAIL-ON': 'warn',
+      'INPUT_GITHUB-TOKEN': 't',
+      INPUT_FAIL_ON: 'warn',
+      GITHUB_TOKEN: 't',
+      INPUT_COMMENT: 'false',
+      INPUT_EXCLUDE: 'a/**',
+    });
   });
 
   it('uses no secret but the job token', () => {

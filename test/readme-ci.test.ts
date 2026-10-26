@@ -1,7 +1,7 @@
 // The README shows what the tool prints and what this repository runs: its example comment and CLI output are the
 // renderings of fixtures/action/demo, its workflow is the Action with its default (it blocks nothing), and the CI's
 // dogfood step is the same Action, from this checkout, blocking on FAIL or worse.
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -62,30 +62,65 @@ describe("the README's examples are what the tool prints on fixtures/action/demo
 describe("the README's workflow and the CI's dogfood step", () => {
   const workflow = fence(block('workflow'), 'yaml');
   const repo = /github\.com\/([^/]+\/[^/.]+)/.exec(pkg.repository.url)![1]!;
+  // Pinned by its full commit SHA, with the release as a comment (test/pinned-actions.test.ts).
+  const CHECKOUT = /- uses: actions\/checkout@[0-9a-f]{40} # v\d+\.\d+\.\d+\n        with:\n          fetch-depth: 0\n/;
+  const pinned = (text: string): string | null => new RegExp(`      - uses: ${repo}@[0-9a-f]{40} # v\\d+\\.\\d+\\.\\d+\\n`).exec(text)?.[0] ?? null;
+  const ours = pinned(workflow);
 
-  it('the README: on pull requests, the minimal permissions, the whole history, and the Action with its default', () => {
+  it('the README: on pull requests, the minimal permissions, the whole history, and the Action pinned, with its default', () => {
     expect(workflow).toContain('on: pull_request\n');
     expect(workflow).toContain('permissions:\n  contents: read\n  pull-requests: write\n\n');
-    expect(workflow).toContain('- uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n');
-    expect(workflow.endsWith(`      - uses: ${repo}@v0\n`)).toBe(true);
+    expect(workflow).toMatch(CHECKOUT);
+    expect(ours).not.toBeNull();
+    expect(workflow.endsWith(ours!)).toBe(true);
     expect(workflow).not.toMatch(/fail-on|secrets\./);
+  });
+
+  it('the README names `@v0` as the alternative, and its risk', () => {
+    expect(readme).toContain(`\`${repo}@v0\` is the convenient alternative`);
+    expect(readme).toContain('a tag can be moved');
   });
 
   it('the CI: the same Action from this checkout, blocking on FAIL or worse, without its fixtures and its example', () => {
     expect(ci).toMatch(/    permissions:\n      contents: read\n      pull-requests: write\n/);
-    expect(ci).toContain('      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n');
+    expect(ci).toMatch(CHECKOUT);
     expect(ci).toContain("      - name: Check this PR\n        if: github.event_name == 'pull_request' && github.head_ref != 'example/weakened-tests' && (success() || failure())\n        uses: ./\n        with:\n          fail-on: fail\n          exclude: |\n            fixtures/**\n            examples/**\n");
   });
 
-  it('the example pull request: the published Action with its default, on that branch alone', () => {
+  it('the example pull request: the published Action as the README pins it, with its default, on that branch alone', () => {
     expect(example).toContain("    if: github.head_ref == 'example/weakened-tests' && github.event.pull_request.head.repo.full_name == github.repository\n");
     expect(example).toContain('permissions:\n  contents: read\n  pull-requests: write\n');
-    expect(example).toContain('      - uses: actions/checkout@v4\n        with:\n          fetch-depth: 0\n');
-    expect(example.endsWith(`      - uses: ${repo}@v0\n`)).toBe(true);
+    expect(example).toMatch(CHECKOUT);
+    expect(example.endsWith(ours!)).toBe(true);
     expect(example).not.toMatch(/fail-on|exclude|secrets\./);
   });
 
   it('how to block is the input the Action reads', () => {
-    expect(readme).toContain(`      - uses: ${repo}@v0\n        with:\n          fail-on: fail   # or: warn\n`);
+    expect(readme).toContain(`${ours!}        with:\n          fail-on: fail   # or: warn\n`);
+  });
+});
+
+// The README's pins are the ones this repository runs: Dependabot updates the workflows' SHAs and release comments, not
+// the README, so every `uses:` of the README must be, exactly (SHA and comment), the pin the workflows hold for that
+// action, and the workflows must agree on it. A Dependabot pull request that fails here gets the README's update on its
+// branch (CLAUDE.md, Workflow, 9).
+describe("the README's `uses:` are the workflows' pins", () => {
+  const WORKFLOWS = fileURLToPath(new URL('../.github/workflows/', import.meta.url));
+  /** Every `uses: owner/repo@ref # comment` of a text: the action, and the line's value from the action on. */
+  const pins = (text: string): Array<{ action: string; pin: string }> =>
+    [...text.matchAll(/^\s*-?\s*uses:\s*(\S+?)@(\S+)(.*)$/gm)].map((m) => ({ action: m[1]!, pin: `${m[1]}@${m[2]}${m[3]!.trimEnd()}` }));
+  const workflowPins = readdirSync(WORKFLOWS)
+    .filter((f) => /\.ya?ml$/.test(f))
+    .flatMap((f) => pins(readFileSync(join(WORKFLOWS, f), 'utf8')).filter((p) => !p.action.startsWith('./')));
+  const readmePins = pins(readme);
+
+  it('the README has its pins (actions/checkout and the Action)', () => {
+    expect(readmePins.map((p) => p.action)).toContain('actions/checkout');
+    expect(readmePins.length).toBeGreaterThan(1);
+  });
+
+  it.each(readmePins.map((p) => [p.action, p.pin]))('%s: %s', (action, pin) => {
+    const held = [...new Set(workflowPins.filter((p) => p.action === action).map((p) => p.pin))];
+    expect(held, `the workflows' pins of ${action}`).toEqual([pin]);
   });
 });

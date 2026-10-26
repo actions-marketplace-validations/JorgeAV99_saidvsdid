@@ -2,8 +2,8 @@
 
 saidvsdid (src/parse/py-scopes.ts) runs this script once per call of at most 1 MB of source
 (`python -I -X utf8`), stdin, stdout and stderr being files: a JSON object on stdin, {"files": [{"id": ..., "source":
-<the file's bytes, base64>}]}, and one on stdout, {"protocol": 5, "python": "3.12.3", "supported":
-true, "why": null, "files": {id: result}}, both read and written as bytes. The interpreter's own
+<the file's bytes, base64>}]}, and one on stdout, {"protocol": 6, "python": "3.12.3", "supported":
+true, "tested": true, "why": null, "files": {id: result}}, both read and written as bytes. The interpreter's own
 `ast` and `symtable` decide, on the file's bytes as Python decodes them (PEP 263: a coding
 declaration, a BOM); nothing here re-implements Python's scoping. A file whose encoding is not
 UTF-8 (a declaration of another codec, or a BOM the declaration contradicts) is not read: saidvsdid
@@ -34,7 +34,7 @@ it has a star import, what may rebind its names at run time (NAMESPACE_*), and e
 exactly: none, or one base that is certainly unittest.TestCase.
 
 Exhaustiveness: every node class of the running interpreter's `ast` is classified below (BINDERS,
-NONE); a class that is not, in a supported version, makes the version unsupported; a node that is
+NONE); a class that is not, in any version (one newer than TESTED included), makes the version unsupported; a node that is
 not, in a file, makes the file unreadable (a WARN). Every `Name` stored or deleted must be explained
 by a binder whose value is read (or that has none): one that is not makes its name uncertain.
 """
@@ -49,8 +49,13 @@ import symtable
 import sys
 import tokenize
 
-PROTOCOL = 5
-SUPPORTED = ((3, 9), (3, 10), (3, 11), (3, 12), (3, 13))
+PROTOCOL = 6
+# The oldest version read: the oldest CPython python.org supports. There is no newest: a later version runs the
+# script as any other, and what keeps it certain is what keeps a tested one certain (self_check, the closed sets of
+# symtable predicates below, a WARN for anything that fails). TESTED is what CI runs; the reply says whether the
+# interpreter is one of them, and the report records it.
+MINIMUM = (3, 11)
+TESTED = ((3, 11), (3, 12), (3, 13), (3, 14), (3, 15))
 RUNNER_MODULES = ("pytest", "unittest")
 TEST_CASES = ("TestCase", "IsolatedAsyncioTestCase")
 
@@ -759,15 +764,16 @@ def main():
     request = json.loads(sys.stdin.buffer.read())
     version = "%d.%d.%d" % sys.version_info[:3]
     why = None
-    if sys.version_info[:2] not in SUPPORTED:
-        why = "Python %s is not a supported version (%s)" % (version, ", ".join("%d.%d" % v for v in SUPPORTED))
+    if sys.version_info[:2] < MINIMUM:
+        why = "Python %s is older than the oldest supported version (%d.%d)" % ((version,) + MINIMUM)
     else:
         why = self_check()
     files = {}
     if why is None:
         for item in request.get("files", []):
             files[item["id"]] = analyse(base64.b64decode(item["source"]))
-    sys.stdout.buffer.write(json.dumps({"protocol": PROTOCOL, "python": version, "supported": why is None, "why": why, "files": files}, ensure_ascii=True).encode("ascii"))
+    tested = sys.version_info[:2] in TESTED
+    sys.stdout.buffer.write(json.dumps({"protocol": PROTOCOL, "python": version, "supported": why is None, "tested": tested, "why": why, "files": files}, ensure_ascii=True).encode("ascii"))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,17 @@
+{
+  "description": "The control of `py-fstring-before-skiptest`: a real docstring (a str constant) before `self.skipTest(\"pending\")` leaves the skip the first statement of the test (F2): FAIL. The real runner skips it.",
+  "kind": "positive",
+  "runner": "pytest",
+  "expect": { "verdict": "FAIL", "findings": [
+    { "rule": "TG003", "severity": "fail", "file": "test_parser.py", "line": 7, "test": "TestParser::test_parses", "ids": [["TestParser::test_parses",1]] }
+  ] },
+  "runnerEvidence": {
+    "tool": "pytest 8.4.2",
+    "base": {
+      "[\"test_parser.py\",\"TestParser::test_parses\",1]": "passed"
+    },
+    "head": {
+      "[\"test_parser.py\",\"TestParser::test_parses\",1]": "skipped"
+    }
+  }
+}
