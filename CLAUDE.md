@@ -1,5 +1,14 @@
 # saidvsdid — working rules
 
+## Before anything else
+
+- **Only the personal account `JorgeAV99`.** Never create, fork, read or modify
+  anything outside it — no organization, the owner's company organization
+  included — on GitHub or any other service. A task that seems to need it (a
+  second owner for a pull request from a fork, a merge queue, an organization
+  setting) stops there and asks the owner; meanwhile that part stays untested
+  and the report says so.
+
 ## Project rules (every milestone)
 
 - **FAIL only with certainty about the runner's API; WARN when in doubt; never a
