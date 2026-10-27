@@ -1,6 +1,6 @@
 {
   "name": "saidvsdid",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "What your coding agent did with the tests: detects deleted, skipped, focused or weakened tests and test-configuration changes in a pull request, as one PR comment (GitHub Action) or a CLI report.",
   "license": "MIT",
   "author": "Jorge Díaz (https://github.com/JorgeAV99)",

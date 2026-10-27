@@ -1,3 +1,4 @@
+import { coverageCounts, incomplete, type Coverage } from '../coverage.js';
 import type { Finding, RuleId, Severity } from '../rules/index.js';
 
 export const REPORT_SCHEMA_ID = 'saidvsdid/report/v1';
@@ -24,9 +25,20 @@ export interface NotEvaluated {
 }
 
 /** How a verdict reads: OK says what it means and what it does not. */
-export function verdictLabel(report: Pick<Report, 'verdict' | 'mode' | 'not_evaluated'>): string {
+export function verdictLabel(report: Pick<Report, 'verdict' | 'mode' | 'not_evaluated' | 'coverage'>, options: { claims?: boolean } = {}): string {
   if (report.verdict !== 'OK') return report.verdict;
-  const notEvaluated = report.not_evaluated.map((n) => n.rule);
+  // What the OK covers (src/coverage.ts): never "no issues found" when a changed test file was read in part or not at all,
+  // or when none was detected.
+  const c = report.coverage;
+  if (c && c.analysed + c.partly_analysed + c.not_analysed === 0) {
+    return `OK — no test files detected in the selected scope${c.excluded > 0 ? ` (${c.excluded} changed path${c.excluded === 1 ? '' : 's'} excluded)` : ''}`;
+  }
+  if (c && incomplete(c)) {
+    const n = c.partly_analysed + c.not_analysed;
+    return `OK — no findings in what it read; ${n} test file${n === 1 ? '' : 's'} partly analysed or not analysed (${coverageCounts(c)})`;
+  }
+  // `claims: false`: the caller says, elsewhere, which rules were not evaluated (the Action's comment, in its footer).
+  const notEvaluated = options.claims === false ? [] : report.not_evaluated.map((n) => n.rule);
   if (notEvaluated.length) return `OK — no issues found (${notEvaluated.join(', ')} not evaluated)`;
   return report.mode === 'diff' ? 'OK — no issues found' : 'OK — no issues found (claims not verified)';
 }
@@ -53,9 +65,14 @@ export interface Report {
     name: 'saidvsdid';
     version: string;
     /** What read the files' names (docs/rules.md, *Attribution*): the TypeScript compiler's version, and the Python interpreter's when one read Python files (null: none did). */
-    scopes?: { typescript: string; python: string | null; python_unavailable?: string; python_untested?: string };
+    /** `python_remedy`: how to give saidvsdid a Python it reads, when the interpreter is the problem (none, or too old). */
+    scopes?: { typescript: string; python: string | null; python_unavailable?: string; python_remedy?: string; python_untested?: string };
   };
-  repo: { base: string; head: string };
+  /**
+   * The commits compared. `base_ref`: the base as given and the commit it resolved to, present when `base` is their merge
+   * base with the head and not that commit (a branch behind its base; `--exact-base` compares the commit itself).
+   */
+  repo: { base: string; head: string; base_ref?: { ref: string; sha: string } };
   mode: Mode;
   /** The rules evaluated (selected and with what they need). */
   rules: RuleId[];
@@ -66,6 +83,8 @@ export interface Report {
   counts: Record<Severity, number>;
   unverifiable: Unverifiable[];
   files: FileSummary[];
+  /** What was read of the changed test files (src/coverage.ts); absent from reports that do not compute it (`baseline`). */
+  coverage?: Coverage;
   findings: Finding[];
 }
 

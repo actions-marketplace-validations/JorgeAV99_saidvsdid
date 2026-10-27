@@ -113,7 +113,25 @@ export interface PyClassFact {
 }
 
 /** The interpreter that reads Python files in this process, once found. */
-export type PyRuntime = { known: true; command: string; version: string; tested: boolean } | { known: false; why: string; version: string | null };
+export type PyRuntime =
+  | { known: true; command: string; version: string; tested: boolean }
+  /** `remedy`: how to give saidvsdid a Python it reads, when the problem is the interpreter (none, or one too old). */
+  | { known: false; why: string; version: string | null; remedy?: string };
+
+/** The oldest Python the scope reader reads (python/saidvsdid_scopes.py, MINIMUM). */
+const MINIMUM: readonly [number, number] = [3, 11];
+
+/** How to get a Python saidvsdid reads: on GitHub Actions, and anywhere else (`SAIDVSDID_PYTHON` takes precedence when set). */
+function pythonRemedy(env: string | undefined): string {
+  const override = env ? `change SAIDVSDID_PYTHON (now ${JSON.stringify(env)}) to one` : 'put one first on PATH or set SAIDVSDID_PYTHON to it';
+  return `on GitHub Actions, add actions/setup-python with python-version ${MINIMUM.join('.')} or later before saidvsdid; elsewhere, ${override}`;
+}
+
+/** Whether a version string (`3.10.12`) is older than MINIMUM. */
+function olderThanMinimum(version: string): boolean {
+  const [major, minor] = version.split('.').map(Number);
+  return major! < MINIMUM[0] || (major === MINIMUM[0] && minor! < MINIMUM[1]);
+}
 
 let runtime: PyRuntime | undefined;
 const cache = new Map<string, PyFacts>();
@@ -337,6 +355,16 @@ function tail(path: string): string {
   }
 }
 
+/** What the interpreter `command` answered, as a runtime: a version older than MINIMUM names the executable and the remedy. */
+export function runtimeOf(reply: Pick<PyReply, 'python' | 'supported' | 'tested' | 'why'>, command: string, env: string | undefined): PyRuntime {
+  if (reply.supported) return { known: true, command, version: reply.python, tested: reply.tested };
+  if (olderThanMinimum(reply.python)) {
+    // The executable actually run, so that the remedy fixes the one saidvsdid uses (SAIDVSDID_PYTHON takes precedence).
+    return { known: false, why: `Python ${reply.python} (${command}) is older than ${MINIMUM.join('.')}, the oldest saidvsdid reads`, version: reply.python, remedy: pythonRemedy(env) };
+  }
+  return { known: false, why: reply.why ?? `Python ${reply.python} is not supported`, version: reply.python };
+}
+
 /** Finds the interpreter (once per process) and whether its version is supported. */
 export function pythonRuntime(): PyRuntime {
   if (runtime) return runtime;
@@ -349,10 +377,10 @@ export function pythonRuntime(): PyRuntime {
       tried.push(`${command}: ${reply.error}`);
       continue;
     }
-    runtime = reply.supported ? { known: true, command, version: reply.python, tested: reply.tested } : { known: false, why: reply.why ?? `Python ${reply.python} is not supported`, version: reply.python };
+    runtime = runtimeOf(reply, command, env);
     return runtime;
   }
-  runtime = { known: false, why: `no Python interpreter runs the scope reader (${tried.join('; ')}); set SAIDVSDID_PYTHON`, version: null };
+  runtime = { known: false, why: `no Python interpreter runs the scope reader (${tried.join('; ')})`, version: null, remedy: pythonRemedy(env) };
   return runtime;
 }
 

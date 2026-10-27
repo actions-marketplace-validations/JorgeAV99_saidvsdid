@@ -3,7 +3,7 @@ import { evidenceFromSession, type FromTranscriptOptions } from './evidence/from
 import { packageScripts, type Scripts } from './transcript/commands.js';
 import { parseTranscript, type AgentOption } from './transcript/index.js';
 import { optionBool, pytestConfigFor } from './config/pytest.js';
-import { changedFiles, compareStr, listFiles, listTree, readBlob, readBlobBytes, repoRoot, resolveCommit, treeOf, type FileChange } from './git/diff.js';
+import { changedFiles, compareStr, listFiles, listTree, readBlob, readBlobBytes, repoRoot, selectBase, treeOf, type FileChange } from './git/diff.js';
 import { analysePython, isLooseTestPath, isTestPath, languageForPath, parseTestFile, pythonFacts, pythonRuntimeIfStarted, type PyFacts, type TestFile } from './parse/index.js';
 import ts from 'typescript';
 import { EXIT_CODES, REPORT_SCHEMA_ID, verdictFor, type FileSummary, type Mode, type NotEvaluated, type Report, type Unverifiable } from './report/model.js';
@@ -18,11 +18,16 @@ import { VERSION } from './version.js';
 import { RULE_FAIL_EFFECT } from './rules/effects.js';
 import { NEW_TEST } from './rules/util.js';
 import { groupFindings } from './rules/group.js';
+import { coverageOf, foreignTestLanguage, type SideReading } from './coverage.js';
 
 export interface CheckOptions {
   repo: string;
   base: string;
   head: string;
+  /** --exact-base: compare the base commit itself, not its merge base with the head (src/git/diff.ts, selectBase). */
+  exactBase?: boolean;
+  /** How the report names the base when it records it (Report.repo.base_ref): the Action's `pull_request.base.sha`. Absent: `base` as given. */
+  baseLabel?: string;
   /** Restrict to these rules; defaults to every implemented rule. */
   rules?: RuleId[];
   /** Paths to ignore entirely (gitignore-style globs). */
@@ -78,8 +83,10 @@ async function load(read: SourceReader, readBytes: BytesReader, reading: PyReadi
 
 export async function runCheck(options: CheckOptions): Promise<Report> {
   const repo = repoRoot(options.repo);
-  const base = resolveCommit(repo, options.base);
-  const head = resolveCommit(repo, options.head);
+  // The merge base, as a pull request's "Files changed" (and the Action) compares: every use below reads this one commit.
+  const selected = selectBase(repo, options.base, options.head, options.exactBase ?? false);
+  const { base, head } = selected;
+  const baseRef = selected.baseRef && options.baseLabel ? { ...selected.baseRef, ref: options.baseLabel } : selected.baseRef;
   const listings = new Map<'base' | 'head', string[]>();
   // Each blob is read once, as bytes: Python decodes its own (PEP 263), the rest reads UTF-8.
   const stored = new Map<string, Buffer | null>();
@@ -123,6 +130,7 @@ export async function runCheck(options: CheckOptions): Promise<Report> {
     ...(options.transcript ? { evidenceLabel: options.transcript.label } : options.evidenceLabel ? { evidenceLabel: options.evidenceLabel } : {}),
     repoDir: repo,
     f2p: options.f2p ?? null,
+    baseRef,
   });
 }
 
@@ -191,6 +199,8 @@ export interface AnalyzeInput {
   model?: RepoModel;
   repoDir?: string | null;
   f2p?: F2pOptions | null;
+  /** The base as given, when the compared `base` is its merge base with the head and not that commit (Report.repo.base_ref). */
+  baseRef?: { ref: string; sha: string } | null;
 }
 
 /** The git-independent core of `check`: also used by tests to analyse in-memory sources. */
@@ -267,9 +277,13 @@ export async function analyze(input: AnalyzeInput): Promise<Report> {
     return facts;
   };
 
+  /** Each side the loop below loaded, for the coverage (src/coverage.ts). */
+  const loaded = new Map<string, TestFile>();
   for (const change of changes) {
     const b = change.basePath && candidate(change.basePath) ? await load(read, readBytes, reading, 'base', change.basePath) : null;
     const h = change.headPath && candidate(change.headPath) ? await load(read, readBytes, reading, 'head', change.headPath) : null;
+    if (b) loaded.set(`base\0${b.path}`, b);
+    if (h) loaded.set(`head\0${h.path}`, h);
     // A file that does not parse may hide or invent tests on either side: keep
     // both sides out of the comparison and make the verdict UNVERIFIABLE.
     for (const [file, side] of [[b, 'base'], [h, 'head']] as const) {
@@ -305,6 +319,18 @@ export async function analyze(input: AnalyzeInput): Promise<Report> {
       });
     }
   }
+
+  // What was read of every changed test file, before the rules: it qualifies an OK, never a verdict.
+  const sideReading = (side: 'base' | 'head', p: string | null): SideReading => {
+    if (p === null) return { kind: 'absent' };
+    if (matchesAny(p, exclude)) return { kind: 'excluded' };
+    const language = foreignTestLanguage(p);
+    if (language) return { kind: 'foreign', language };
+    const file = loaded.get(`${side}\0${p}`);
+    if (!file) return { kind: 'other' };
+    return { kind: 'parsed', file, source: file.language === 'python' ? null : read(side, p), named: isTestPath(p) };
+  };
+  const coverage = coverageOf(input.changes.map((change) => ({ change, base: sideReading('base', change.basePath), head: sideReading('head', change.headPath) })));
 
   const allChanges = input.changes.filter((c) => [c.basePath, c.headPath].some((p) => p !== null && !matchesAny(p, exclude)));
   const parsed = new Map<string, Promise<TestFile | null>>();
@@ -436,7 +462,7 @@ export async function analyze(input: AnalyzeInput): Promise<Report> {
   return {
     schema: REPORT_SCHEMA_ID,
     tool: { name: 'saidvsdid', version: VERSION, scopes: scopeTools() },
-    repo: { base, head },
+    repo: { base, head, ...(input.baseRef ? { base_ref: input.baseRef } : {}) },
     mode,
     rules: selected.map((r) => r.id).filter((id) => !notEvaluated.some((n) => n.rule === id)),
     not_evaluated: notEvaluated,
@@ -445,6 +471,7 @@ export async function analyze(input: AnalyzeInput): Promise<Report> {
     counts,
     unverifiable,
     files: summaries.sort((a, b) => compareStr(a.path, b.path)),
+    coverage,
     findings: findings.map(({ tampering: _, ...f }) => f),
   };
 }
@@ -455,7 +482,7 @@ function scopeTools(): NonNullable<Report['tool']['scopes']> {
   return {
     typescript: ts.version,
     python: py === null ? null : py.known ? py.version : null,
-    ...(py !== null && !py.known ? { python_unavailable: py.why } : {}),
+    ...(py !== null && !py.known ? { python_unavailable: py.why, ...(py.remedy ? { python_remedy: py.remedy } : {}) } : {}),
     // Read as any other version (docs/rules.md, *Python*): recorded, never a change of verdict.
     ...(py !== null && py.known && !py.tested ? { python_untested: `Python ${py.version} is newer than the versions saidvsdid's CI tests; it reads the files as any other version, and anything it fails on is a WARN` } : {}),
   };

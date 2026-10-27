@@ -82,7 +82,8 @@ describe("the README's workflow and the CI's dogfood step", () => {
   });
 
   it('the CI: the same Action from this checkout, blocking on FAIL or worse, without its fixtures and its example', () => {
-    expect(ci).toMatch(/    permissions:\n      contents: read\n      pull-requests: write\n/);
+    // The README's two permissions; `actions: read` is the artifact round trip's (it downloads what it uploaded), not the Action's.
+    expect(ci).toMatch(/    permissions:\n      actions: read\n      contents: read\n      pull-requests: write\n/);
     expect(ci).toMatch(CHECKOUT);
     expect(ci).toContain("      - name: Check this PR\n        if: github.event_name == 'pull_request' && github.head_ref != 'example/weakened-tests' && (success() || failure())\n        uses: ./\n        with:\n          fail-on: fail\n          exclude: |\n            fixtures/**\n            examples/**\n");
   });

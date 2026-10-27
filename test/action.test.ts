@@ -53,7 +53,7 @@ describe('the PR comment', () => {
   it('every location links to its line, on the side it is about: a removed test at base, the rest at head', () => {
     const body = renderComment(reports.demo, { link: LINK(repos.demo), failOn: 'none' });
     const { base, head } = repos.demo;
-    expect(body).toContain(`[\`src/cart.test.ts:18\` (removed)](https://github.com/octo/demo/blob/${base}/src/cart.test.ts#L18)`);
+    expect(body).toContain(`[\`src/cart.test.ts:18\` (base)](https://github.com/octo/demo/blob/${base}/src/cart.test.ts#L18)`);
     expect(body).toContain(`[\`src/cart.test.ts:13\`](https://github.com/octo/demo/blob/${head}/src/cart.test.ts#L13)`);
     expect(body).toContain(`[\`vitest.config.ts:6\`](https://github.com/octo/demo/blob/${head}/vitest.config.ts#L6)`);
   });
@@ -119,7 +119,7 @@ describe('the PR comment', () => {
   it('a body past the size limit counts the findings it leaves out, and keeps the verdict', () => {
     const body = renderComment(reports.demo, { link: null, failOn: 'none', maxLength: 1200 });
     expect(body.length).toBeLessThanOrEqual(1200);
-    expect(body).toMatch(/_\d more findings? not shown/);
+    expect(body).toMatch(/\*\*\d+ of 4 findings are not shown here\*\*/);
     expect(body).toContain('**Verdict: FAIL**');
   });
 });
@@ -156,7 +156,7 @@ describe("the PR comment is inert to the pull request's text", () => {
       }
       if (n.type === 'link') {
         expect(n.destination).toMatch(new RegExp(`^${blob}[^()\\s<>]+$`));
-        for (let c = n.firstChild; c; c = c.next) expect(c.type === 'code' || (c.type === 'text' && c.literal === ' (removed)'), `${c.type} ${c.literal}`).toBe(true);
+        for (let c = n.firstChild; c; c = c.next) expect(c.type === 'code' || (c.type === 'text' && c.literal === ' (base)'), `${c.type} ${c.literal}`).toBe(true);
       }
       if (n.type === 'text') expect(n.literal ?? '').not.toMatch(PAYLOAD);
     }
@@ -178,7 +178,7 @@ describe("the PR comment is inert to the pull request's text", () => {
       expect(link, path).toBeDefined();
       expect(link!.firstChild?.type).toBe('code');
       expect(link!.firstChild?.literal).toBe(sanitize(path));
-      expect(link!.firstChild?.next?.literal).toBe(' (removed)');
+      expect(link!.firstChild?.next?.literal).toBe(' (base)');
       expect(link!.firstChild?.next?.next).toBeNull();
     }
   });
@@ -246,11 +246,11 @@ interface Run {
   output: string;
 }
 
-async function act(c: Case, inputs: Record<string, string> = {}, options: { existing?: { id: number; login: string; body: string }[]; writeStatus?: number; event?: unknown } = {}): Promise<Run> {
+async function act(c: Case, inputs: Record<string, string> = {}, options: { existing?: { id: number; login: string; body: string }[]; writeStatus?: number; event?: unknown; eventName?: string | null; eventFile?: string | null } = {}): Promise<Run> {
   const dir = mkdtempSync(join(tmp, 'run-'));
   const r = repos[c];
   const event = options.event ?? { pull_request: { number: 7, base: { sha: r.base }, head: { sha: r.head } } };
-  writeFileSync(join(dir, 'event.json'), JSON.stringify(event));
+  if (options.eventFile !== null) writeFileSync(join(dir, 'event.json'), options.eventFile ?? JSON.stringify(event));
   writeFileSync(join(dir, 'summary.md'), '');
   writeFileSync(join(dir, 'output'), '');
   const gh = fakeGitHub(options.existing ?? [], options.writeStatus);
@@ -258,6 +258,7 @@ async function act(c: Case, inputs: Record<string, string> = {}, options: { exis
   const result = await runAction({
     env: {
       GITHUB_EVENT_PATH: join(dir, 'event.json'),
+      ...(options.eventName === null ? {} : { GITHUB_EVENT_NAME: options.eventName ?? 'pull_request' }),
       GITHUB_REPOSITORY: 'octo/demo',
       GITHUB_WORKSPACE: r.repo,
       GITHUB_STEP_SUMMARY: join(dir, 'summary.md'),
@@ -334,13 +335,39 @@ describe('the Action', () => {
     expect(run.summary).toContain('**Verdict: FAIL**');
   });
 
-  it('not a pull request: ERROR, nothing posted, and it blocks only when fail-on asks', async () => {
-    const run = await act('demo', {}, { event: { push: {} } });
+  it.each(['push', 'workflow_dispatch', 'merge_group', 'schedule', 'pull_request_review', 'issue_comment', 'a_future_event'])(
+    'not a pull request event (%s): SKIPPED, a notice, nothing read or posted, green whatever fail-on says',
+    async (eventName) => {
+      // A review event carries a pull_request object: the event's name decides, never the payload's shape. No payload
+      // file at all: nothing is read for a skipped event.
+      for (const failOn of ['none', 'fail', 'warn']) {
+        const run = await act('demo', { 'fail-on': failOn }, { eventName, eventFile: null });
+        expect(run.result).toMatchObject({ verdict: 'SKIPPED', exitCode: 0, commentUrl: null });
+        expect(run.calls).toEqual([]);
+        expect(run.log).toEqual([`::notice::saidvsdid runs on pull_request events; nothing to check here (event: ${eventName})`]);
+        expect(run.summary).toBe(`saidvsdid runs on pull_request events; nothing to check here (event: \`${eventName}\`).\n`);
+        expect(run.output).toBe('verdict=SKIPPED\nexit-code=\ncomment-url=\n');
+      }
+    },
+  );
+
+  it('pull_request_target is analysed as pull_request is', async () => {
+    const run = await act('demo', {}, { eventName: 'pull_request_target' });
+    expect(run.result.verdict).toBe('FAIL');
+  });
+
+  it('a pull request event whose payload is unreadable or lacks the pull request is an ERROR, never SKIPPED', async () => {
+    for (const eventFile of ['not json', JSON.stringify({ push: {} }), JSON.stringify({ pull_request: { number: 7 } })]) {
+      const run = await act('demo', {}, { eventFile });
+      expect(run.result.verdict).toBe('ERROR');
+      expect(run.summary).toContain('**Verdict: ERROR**');
+      expect((await act('demo', { 'fail-on': 'fail' }, { eventFile })).result.exitCode).toBe(1);
+    }
+  });
+
+  it('no event name: not a GitHub runner, an ERROR', async () => {
+    const run = await act('demo', {}, { eventName: null });
     expect(run.result.verdict).toBe('ERROR');
-    expect(run.result.exitCode).toBe(0);
-    expect(run.calls).toEqual([]);
-    expect(run.summary).toContain('**Verdict: ERROR**');
-    expect((await act('demo', { 'fail-on': 'fail' }, { event: { push: {} } })).result.exitCode).toBe(1);
   });
 
   it('a base commit missing from the clone is an ERROR that names fetch-depth', async () => {
@@ -382,6 +409,7 @@ describe('the bundle (dist/action/index.js), alone', () => {
       encoding: 'utf8',
       env: {
         ...process.env,
+        GITHUB_EVENT_NAME: 'pull_request',
         GITHUB_EVENT_PATH: join(dir, 'event.json'),
         GITHUB_REPOSITORY: 'octo/demo',
         GITHUB_WORKSPACE: r.repo,

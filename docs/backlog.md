@@ -3,6 +3,40 @@
 Work that is deliberately out of scope for the milestone that found it. Each
 item says where it came from. Nothing here is implemented.
 
+## From the 0.2.0 usability audit: what is left
+
+From the PR that made the CLI compare the merge base, qualified an OK by its coverage, skipped events that are not a
+pull request's and bounded large comments (the audit: synthetic and real pull requests, the README followed
+literally). Deliberately not in it:
+
+- **The backtick look-alike (U+02CB) in the comment.** Text copied from a message (`check out with ˋfetch-depth: 0ˋ`)
+  does not paste as it reads. The code-span design that needs it was reviewed against GitHub's renderer; changing it
+  (a double-backtick span, `<code>`) is a design change with the GFM oracle, not text.
+- **An ERROR with `fail-on: none` is a green check.** A checkout without `fetch-depth: 0` says so in the comment, but
+  the check list shows green. Making a configuration ERROR fail whatever `fail-on` says changes the documented
+  default: a decision for the owner.
+- **`.mocharc.*` in the configuration net.** Mocha's rc files (JS, YAML, JSON) are not watched; a change of `spec`
+  there narrows the suite silently. Watching them is a scope decision of the net (CLAUDE.md, *The config net*).
+- **`comment: on-findings`.** An input to post no comment when nothing was found (a docs-only pull request).
+- **Renamed parametrised tests.** A TG001 INFO names a template-literal test as written
+  (`JSON.stringify(t.input)` renamed to `joinURL(${…})`): noise to group or leave out.
+- **Analysing `merge_group`.** It is SKIPPED: a merge group can hold several pull requests, and its comment would have
+  nowhere to go. Analysing `merge_group.base_sha..head_sha` needs a design.
+- **A pull request from a fork, live.** Not exercised in the audit: it needs a second account as the fork's owner
+  (CLAUDE.md, *Before anything else*). The read-only token's warning was checked on a pull request of the repository.
+- **The artifact on GitHub Enterprise Server.** Not attempted there (no v4 artifacts): the comment gives the
+  reproduction. A client for GHES's own artifact service would need its own round trip.
+- **The GFM oracle in CI.** `scripts/check-gfm-render.mjs` is run by hand. Running it in the public repository's CI,
+  with the job's `GITHUB_TOKEN` for GitHub's `POST /markdown`, and failing the job when the API does not answer (never a
+  green run that rendered nothing), would make it a check of every pull request that touches the comment (from the
+  independent review of this PR).
+- **Three payloads of the GFM oracle without a tag.** In `FOLDED`, `CODEX`, `LONG` and `last` carry no identity tag of
+  their own (every other payload does): `CODEX` and `LONG` are unique as written and `last` is short, but tagging them
+  too would make every payload's identity explicit (from the independent review of this PR).
+- **The Action's version between releases.** The reproduction names `npx saidvsdid@<version>`, the Action's version
+  string, always qualified: a bundle built between releases may differ from npm's package. A build identity in the
+  bundle (the commit it was built from) would remove the qualification.
+
 ## Python versions: what is left
 
 From the PR that read the versions python.org supports (3.11–3.15, no upper bound) and its Codex design review:

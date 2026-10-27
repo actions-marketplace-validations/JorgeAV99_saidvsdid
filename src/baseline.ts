@@ -3,7 +3,7 @@
 // safety net. It is deliberately what a ~100-line script would do: DO NOT
 // make it smarter. Its misses and false alarms are what the real rules are
 // measured against (see docs/rules.md, "baseline").
-import { git, repoRoot, resolveCommit } from './git/diff.js';
+import { git, repoRoot, selectBase } from './git/diff.js';
 import { EXIT_CODES, REPORT_SCHEMA_ID, verdictFor, type Report } from './report/model.js';
 import type { Finding, RuleId, Severity } from './rules/index.js';
 import { VERSION } from './version.js';
@@ -42,10 +42,10 @@ const count = (lines: string[], re: RegExp): number => lines.filter((l) => re.te
 const countAll = (lines: string[], re: RegExp): number => lines.reduce((n, l) => n + (l.match(re)?.length ?? 0), 0);
 const maxNumber = (lines: string[]): number => Math.max(0, ...lines.filter((l) => TIMEOUT_LINE.test(l)).flatMap((l) => (l.match(/\d[\d_]*/g) ?? []).map((n) => Number(n.replace(/_/g, '')))));
 
-export function runBaseline(options: { repo: string; base: string; head: string }): Report {
+export function runBaseline(options: { repo: string; base: string; head: string; exactBase?: boolean }): Report {
   const repo = repoRoot(options.repo);
-  const base = resolveCommit(repo, options.base);
-  const head = resolveCommit(repo, options.head);
+  // The same commits `check` compares (src/git/diff.ts, selectBase): the rival is benchmarked on the same diff.
+  const { base, head, baseRef } = selectBase(repo, options.base, options.head, options.exactBase ?? false);
   const diff = git(repo, ['diff', '--no-ext-diff', '--no-color', '--unified=0', base, head, '--']);
   const findings: Finding[] = [];
   const add = (rule: RuleId, severity: Severity, file: string, message: string): void => {
@@ -73,7 +73,7 @@ export function runBaseline(options: { repo: string; base: string; head: string 
   return {
     schema: REPORT_SCHEMA_ID,
     tool: { name: 'saidvsdid', version: VERSION },
-    repo: { base, head },
+    repo: { base, head, ...(baseRef ? { base_ref: baseRef } : {}) },
     mode: 'diff',
     rules: ['TG001', 'TG002', 'TG003', 'TG004', 'TG005'],
     not_evaluated: [],

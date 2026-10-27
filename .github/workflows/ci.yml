@@ -22,8 +22,9 @@ jobs:
   push:
     name: test, fixtures vs. real runners, Python 3.11/3.15, dogfood (ubuntu, node 22)
     runs-on: ubuntu-latest
-    # The dogfood step comments on the pull request.
+    # The dogfood step comments on the pull request; the artifact round trip downloads what it uploaded.
     permissions:
+      actions: read
       contents: read
       pull-requests: write
     timeout-minutes: 40
@@ -111,3 +112,20 @@ jobs:
           exclude: |
             fixtures/**
             examples/**
+      # The Action's artifact client (src/action/artifact.ts) against GitHub's own artifact service: the harness is a
+      # local JavaScript action (only those get the runtime credentials), bundled here from scripts/artifact-roundtrip.ts;
+      # it uploads a known pair, and the check downloads it with the REST API (the redirect followed without the token)
+      # and compares names and bytes with Python's zipfile. Either step failing fails the job.
+      - name: Artifact round trip (bundle the harness)
+        if: success() || failure()
+        run: npx esbuild scripts/artifact-roundtrip.ts --bundle --platform=node --format=esm --target=node24 --outfile=.github/actions/artifact-roundtrip/index.js --log-level=warning
+      - name: Artifact round trip (upload with the client)
+        id: roundtrip
+        if: success() || failure()
+        uses: ./.github/actions/artifact-roundtrip
+      - name: Artifact round trip (download and compare)
+        if: success() || failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.roundtrip.outputs.artifact-id }}
+        run: python3.15 -I scripts/artifact-roundtrip-check.py

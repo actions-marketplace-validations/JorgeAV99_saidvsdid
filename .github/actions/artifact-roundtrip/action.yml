@@ -1,0 +1,11 @@
+name: saidvsdid artifact round trip
+description: CI only. Uploads a known pair of files with the Action's artifact client (src/action/artifact.ts).
+# A JavaScript action, because GitHub gives the runtime credentials (ACTIONS_RUNTIME_TOKEN, ACTIONS_RESULTS_URL) to
+# JavaScript actions and not to `run:` steps. index.js is bundled by the CI step before this one, from
+# scripts/artifact-roundtrip.ts: never versioned.
+outputs:
+  artifact-id:
+    description: The uploaded artifact's id.
+runs:
+  using: node24
+  main: index.js

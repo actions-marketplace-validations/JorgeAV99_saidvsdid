@@ -5,9 +5,12 @@
 // test/action.test.ts runs it on fixture repositories with a fake GitHub API.
 import { appendFileSync, readFileSync } from 'node:fs';
 import { runCheck } from '../check.js';
-import { git } from '../git/diff.js';
-import { COMMENT_MARKER, gateText, literal, renderComment, type FailOn, type LineLink } from '../report/comment.js';
+import { MissingHistoryError } from '../git/diff.js';
+import { COMMENT_MARKER, commentFits, gateText, literal, renderComment, type CommentOptions, type FailOn, type LineLink, type RestOfReport } from '../report/comment.js';
+import { renderJson } from '../report/json.js';
+import { uploadArtifact } from './artifact.js';
 import { EXIT_CODES, type Verdict } from '../report/model.js';
+import { coverageCounts, incomplete } from '../coverage.js';
 import { ownRecord } from '../util/names.js';
 import { VERSION } from '../version.js';
 
@@ -33,8 +36,16 @@ export interface ActionDeps {
   log: (line: string) => void;
 }
 
+/**
+ * The events the Action analyses: a pull request's own (`pull_request_target` runs in the base's context with the same
+ * payload). Any other event is SKIPPED: decided by the event's name, never by the payload's shape (a review event
+ * carries a `pull_request` too, and an unreadable payload of a pull request event is an ERROR, not a skip).
+ */
+export const ANALYSED_EVENTS: ReadonlySet<string> = new Set(['pull_request', 'pull_request_target']);
+
 export interface ActionResult {
-  verdict: Verdict;
+  /** SKIPPED: an event that is not a pull request's; an output of the Action only, never a report's verdict (no exit code). */
+  verdict: Verdict | 'SKIPPED';
   /** The check's own exit status: 1 when `fail-on` asks for it, else 0. */
   exitCode: number;
   body: string;
@@ -168,23 +179,64 @@ export async function upsertComment(api: Api, pr: PullRequest, body: string): Pr
   return isRecord(res) && typeof res['html_url'] === 'string' ? res['html_url'] : null;
 }
 
-async function analyse(env: Env, pr: PullRequest, failOn: FailOn, exclude: string[]): Promise<{ verdict: Verdict; body: string }> {
+/** What a run found: the verdict, the comment's body, a line for the log (coverage counts, or the ERROR's reason), and whether an OK is qualified. */
+interface Analysis {
+  verdict: Verdict;
+  body: string;
+  detail: string;
+  /** An OK that does not cover everything the pull request changes (src/coverage.ts): a warning, not a notice. */
+  qualified: boolean;
+  /** The job summary: the comment when it holds everything; else the full report when it fits GitHub's limit for a step summary; else the comment. */
+  summary: string;
+}
+
+/** GitHub's limit for one step's summary is 1 MiB; the full report goes there when its UTF-8 bytes are at most this. */
+const SUMMARY_LIMIT = 1_000_000;
+
+function failure(reason: string, failOn: FailOn): Analysis {
+  const body = renderErrorComment(reason, failOn);
+  return { verdict: 'ERROR', body, detail: reason, qualified: false, summary: body };
+}
+
+async function analyse(env: Env, fetchImpl: typeof fetch, pr: PullRequest, failOn: FailOn, exclude: string[]): Promise<Analysis> {
   const workspace = env['GITHUB_WORKSPACE'] || process.cwd();
-  let base: string;
   try {
-    // The pull request's own changes: from where it left its base branch, as GitHub's "Files changed" shows them.
-    base = git(workspace, ['merge-base', pr.baseSha, pr.headSha]).trim();
-  } catch {
-    return { verdict: 'ERROR', body: renderErrorComment(`the base and head commits are not both in the clone (${pr.baseSha.slice(0, 12)}, ${pr.headSha.slice(0, 12)}): check out with \`fetch-depth: 0\``, failOn) };
-  }
-  try {
-    const report = await runCheck({ repo: workspace, base, head: pr.headSha, exclude });
+    // The pull request's own changes: from where it left its base branch, as GitHub's "Files changed" shows them — the
+    // same selection as the CLI's `check --base` (src/git/diff.ts, selectBase), inside runCheck.
+    const report = await runCheck({ repo: workspace, base: pr.baseSha, head: pr.headSha, baseLabel: 'pull_request.base.sha', exclude });
     const server = (env['GITHUB_SERVER_URL'] || 'https://github.com').replace(/\/+$/, '');
     const repoUrl = `${server}/${encodeURIComponent(pr.owner)}/${encodeURIComponent(pr.repo)}`;
     const link: LineLink = (side, file, line) => `${repoUrl}/blob/${side === 'base' ? report.repo.base : report.repo.head}/${encodePath(file)}${line === null ? '' : `#L${line}`}`;
-    return { verdict: report.verdict, body: renderComment(report, { link, failOn }) };
+    const c = report.coverage;
+    const qualified = report.verdict === 'OK' && c !== undefined && (incomplete(c) || c.analysed === 0);
+    const options: CommentOptions = { link, failOn };
+    const full = renderComment(report, { ...options, full: true });
+    let body = renderComment(report, options);
+    if (!commentFits(report, options)) {
+      // The comment cannot hold everything: the full report, Markdown and JSON from this same report, as the job's
+      // artifact; when it cannot be attached, what reproduces it. Neither changes the verdict or the gate.
+      const encode = (s: string): Uint8Array => new TextEncoder().encode(s);
+      const upload = await uploadArtifact(
+        [
+          { name: 'saidvsdid-report.md', bytes: encode(full.slice(COMMENT_MARKER.length + 1)) },
+          { name: 'saidvsdid-report.json', bytes: encode(renderJson(report)) },
+        ],
+        { env, fetch: fetchImpl },
+      );
+      const rest: RestOfReport = upload.ok
+        ? { kind: 'artifact', url: upload.url }
+        : { kind: 'reproduce', why: upload.why, pr: pr.number, baseSha: pr.baseSha, mergeBase: report.repo.base, head: report.repo.head, exclude, version: VERSION };
+      body = renderComment(report, { ...options, rest });
+    }
+    // The summary is the comment when it holds everything; else the full report, when GitHub's limit allows it.
+    const summary = commentFits(report, options) || new TextEncoder().encode(full).length > SUMMARY_LIMIT ? body : full;
+    return { verdict: report.verdict, body, detail: c ? coverageCounts(c) : '', qualified, summary };
   } catch (e) {
-    return { verdict: 'ERROR', body: renderErrorComment(e instanceof Error ? e.message : String(e), failOn) };
+    // A commit missing or the history cut: the checkout; any other reason (two histories with no common ancestor) as it is.
+    if (e instanceof MissingHistoryError) {
+      return failure(`the base and head commits are not both in the clone, with the history between them (${pr.baseSha.slice(0, 12)}, ${pr.headSha.slice(0, 12)}): check out with \`fetch-depth: 0\``, failOn);
+    }
+    return failure(e instanceof Error ? e.message : String(e), failOn);
   }
 }
 
@@ -213,17 +265,29 @@ export async function runAction(deps: ActionDeps): Promise<ActionResult> {
     return { verdict: 'ERROR', exitCode: 1, body: '', commentUrl: null };
   }
 
+  // Which event, before anything is read: an event that is not a pull request's has nothing to check, and the check
+  // stays green whatever `fail-on` says (it gates verdicts, and there is none).
+  const eventName = env['GITHUB_EVENT_NAME'];
+  if (eventName && !ANALYSED_EVENTS.has(eventName)) {
+    const summary = env['GITHUB_STEP_SUMMARY'];
+    if (summary) appendFileSync(summary, `saidvsdid runs on pull_request events; nothing to check here (event: ${literal(eventName)}).\n`);
+    const output = env['GITHUB_OUTPUT'];
+    if (output) appendFileSync(output, 'verdict=SKIPPED\nexit-code=\ncomment-url=\n');
+    log(`::notice::saidvsdid runs on pull_request events; nothing to check here (event: ${eventName})`);
+    return { verdict: 'SKIPPED', exitCode: 0, body: '', commentUrl: null };
+  }
+
   let event: unknown = null;
   try {
     event = JSON.parse(readFileSync(env['GITHUB_EVENT_PATH'] ?? '', 'utf8'));
   } catch {
     event = null;
   }
-  const pr = pullRequestOf(event, env['GITHUB_REPOSITORY']);
-  const { verdict, body } = typeof pr === 'string' ? { verdict: 'ERROR' as const, body: renderErrorComment(pr, failOn) } : await analyse(env, pr, failOn, exclude);
+  const pr = eventName ? pullRequestOf(event, env['GITHUB_REPOSITORY']) : 'no GITHUB_EVENT_NAME: saidvsdid runs as a step of a GitHub Actions workflow';
+  const { verdict, body, detail, qualified, summary: summaryText } = typeof pr === 'string' ? failure(pr, failOn) : await analyse(env, deps.fetch, pr, failOn, exclude);
 
   const summary = env['GITHUB_STEP_SUMMARY'];
-  if (summary) appendFileSync(summary, body.slice(COMMENT_MARKER.length + 1));
+  if (summary) appendFileSync(summary, summaryText.slice(COMMENT_MARKER.length + 1));
 
   let commentUrl: string | null = null;
   if (comment && typeof pr !== 'string') {
@@ -239,7 +303,8 @@ export async function runAction(deps: ActionDeps): Promise<ActionResult> {
   if (output) appendFileSync(output, `verdict=${verdict}\nexit-code=${EXIT_CODES[verdict]}\ncomment-url=${commentUrl ?? ''}\n`);
 
   const fails = blocks(verdict, failOn);
-  const level = verdict === 'OK' ? 'notice' : fails ? 'error' : 'warning';
-  log(`::${level}::saidvsdid: ${verdict}${fails ? ` (fail-on: ${failOn})` : failOn === 'none' ? ' (not blocking: fail-on is not set)' : ` (not blocking: fail-on: ${failOn})`}${commentUrl ? ` — ${commentUrl}` : ''}`);
+  const level = verdict === 'OK' && !qualified ? 'notice' : fails ? 'error' : 'warning';
+  // The verdict, then what it covers or why it could not run: the log says as much as the comment's first lines.
+  log(`::${level}::saidvsdid: ${verdict}${detail ? ` — ${detail}` : ''}${fails ? ` (fail-on: ${failOn})` : failOn === 'none' ? ' (not blocking: fail-on is not set)' : ` (not blocking: fail-on: ${failOn})`}${commentUrl ? ` — ${commentUrl}` : ''}`);
   return { verdict, exitCode: fails ? 1 : 0, body, commentUrl };
 }

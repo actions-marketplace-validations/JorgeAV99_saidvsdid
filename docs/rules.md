@@ -1,7 +1,8 @@
 # Rules
 
-`saidvsdid check` compares two commits (`--base`, `--head`) and reports
-findings. Each finding has a severity:
+`saidvsdid check` compares two commits and reports findings: from the merge
+base of `--base` and `--head` to the head (*What the check compares*). Each
+finding has a severity:
 
 | Severity | Meaning | Effect on the verdict |
 |---|---|---|
@@ -338,6 +339,87 @@ Exit code 3 never counts as a pass:
   invalid evidence file).
 
 `saidvsdid explain <RULE>` prints the section of this file for that rule.
+
+## What the check compares
+
+What a pull request's "Files changed" shows: from the **merge base** of the
+base and the head (`git merge-base`) to the head, in the Action and in every
+command that takes `--base` (`check`, `baseline`, `evidence from-transcript`;
+one helper, `selectBase` in src/git/diff.ts). A branch behind its base is
+never charged with what the base did after the branch left it (in 0.2.0 the
+CLI compared the tip of `--base` and could give a `FAIL` on a test the branch
+never touched). `--exact-base` compares the two commits as they are. The
+report records the compared commit as `repo.base` and, when that is not the
+commit given, the base as given in `repo.base_ref` (`{ ref, sha }`; the Action's
+`ref` is `pull_request.base.sha`). A base that is not in the clone, a history
+cut by a shallow clone, and two histories with no common ancestor are each an
+`ERROR` with their own message.
+
+## Coverage: what an OK covers
+
+Every report says what it read of the test files the pull request changes,
+per file (a rename is one file, by its head path), after `exclude`:
+
+| State | When |
+|---|---|
+| analysed | JS/TS or Python, parsed, at least one test recognised, every recognised test certainly a known runner's, and no import of a test library saidvsdid does not read |
+| partly analysed | parsed, but no test recognised in a file named as a test, or a test whose runner is not certain (a global, a wrapper), or an import of `ava`, `tap`, `tape`, `uvu`, `zora`, `bun:test`, `mocha`, `jasmine`, `@japa/runner` |
+| not analysed | a test file in a language saidvsdid does not read (below), or a supported file it could not parse or whose names were not read (these keep their own `UNVERIFIABLE` or `WARN`) |
+
+A file's state is the worse of its sides; a side that does not exist or is
+excluded does not count; each side of a rename by its own path. Test files in
+other languages, by name (a closed table, `FOREIGN_TESTS` in src/coverage.ts):
+Go `*_test.go`; Ruby `*_spec.rb`, `*_test.rb`; Rust `tests/**/*.rs`; Java,
+Kotlin and C# `*Test.*`, `*Tests.*`; PHP `*Test.php`; Elixir `*_test.exs`; Swift
+`*Tests.swift`; Dart `*_test.dart`; C/C++ `*_test.cc`, `*_test.cpp`; Bats `*.bats`.
+
+Coverage changes no verdict, exit code or `fail-on`. It qualifies an `OK`:
+`OK — no issues found` only when every changed test file was analysed;
+`OK — no findings in what it read; N test files partly analysed or not
+analysed` otherwise; `OK — no test files detected in the selected scope` when
+there is none. The comment, the job summary, the CLI and the JSON (`coverage`)
+list the files that were not wholly analysed, with why, before any finding.
+
+The states describe the declarations saidvsdid recognised, never that it
+recognised every test: a test declared through a wrapper imported from
+elsewhere (`scenario(…)`) is not seen, so a file can be "analysed" with tests
+it did not see; an assertion of a library it does not know (Hamjest's
+`assertThat`) is not counted, so TG004 sees nothing there; a test file named
+otherwise (a Rust unit test in `src/lib.rs`) is not detected. The table is
+coverage, not a guarantee (docs/known-limitations.md).
+
+## The GitHub Action: events and large reports
+
+**Events.** The event's name decides, never the payload's shape:
+`pull_request` and `pull_request_target` are analysed (a payload that cannot
+be read, or lacks the pull request's numbers and commits, is an `ERROR`); any
+other event (`push`, `workflow_dispatch`, `merge_group`, `schedule`,
+`pull_request_review`, …) is not: a notice, `verdict=SKIPPED`, an empty
+`exit-code`, no comment, and a green check whatever `fail-on` says. `SKIPPED`
+is an output of the Action only, never a report's verdict. On a merge queue,
+green on `merge_group` means the merge group's commit was not analysed.
+
+**Large reports.** The comment is the whole report when it fits GitHub's limit
+(65,536 characters; saidvsdid uses 65,000). Otherwise it is bounded: the totals
+by kind and by file first; each list within a budget of rendered characters
+(the coverage list 4,000, the findings by file 10,000, the files that could
+not be analysed 4,000, a folded list of tests 2,000), each ending with "and N
+more"; as many findings as fit, in order, found by binary search; the exact
+number not shown ("665 of 760 findings are not shown here"); and the full
+report — the same report rendered with nothing shortened, as Markdown, and its
+JSON — uploaded as an artifact of the job (`saidvsdid-report-<job>-<8 hex>`)
+and linked by its exact page. The upload uses the job's runtime credentials
+(so it works on a pull request from a fork), sends the token only to the
+artifact service, and is not attempted on GitHub Enterprise Server. When it
+cannot be attached, the comment says why and how to reproduce the report
+(fetch the base and `refs/pull/<n>/head`, then `npx saidvsdid@<version> check
+--exact-base --base <merge base> --head <head>` with the workflow's `exclude`
+globs, printed only when the command can be copied exactly). The verdict and
+the gate never depend on the upload. The job summary is the comment when it
+holds everything, else the full report when it fits GitHub's 1 MiB limit for a
+step summary. CI checks the client against GitHub's own service on every pull
+request (an upload, then a download with the REST API compared by Python's
+`zipfile`).
 
 ## Rules at a glance
 

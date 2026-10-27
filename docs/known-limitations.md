@@ -144,3 +144,14 @@ Python does not read one side, nothing in the file is a `FAIL`. So a base that P
 declares an encoding other than UTF-8, turns a head's certain skip from a `FAIL` into a `WARN`, although the head is
 valid and was read. This is outside the documented scope of what Python's reading makes certain: the file gets one
 `WARN` `scope_unavailable` naming the side Python did not read, never silence, and never a `FAIL` beside it.
+
+## Coverage: what "analysed" does not see
+
+The coverage states (docs/rules.md, *Coverage*) describe the declarations saidvsdid recognised:
+
+| Example | What the report says | Why |
+|---|---|---|
+| a Vitest file that also declares tests through `scenario(…)`, a helper imported from another file | analysed; the helper's tests unseen | a wrapper's tests are not recognised (*Indirection beyond the file*) |
+| `assertThat(x, is(1))` (Hamjest) removed from a Vitest test | analysed; no TG004 | an assertion library saidvsdid does not know is not counted |
+| a Rust unit test in `src/lib.rs` changed | no test files detected | the table of other languages is by file name (`tests/**/*.rs`) |
+

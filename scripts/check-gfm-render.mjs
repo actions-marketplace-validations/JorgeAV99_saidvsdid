@@ -47,7 +47,8 @@ function literalSafe(name) {
   return name;
 }
 
-const RUN_NAMES = Array.from({ length: 100 }, (_, i) => `<img src=x>@octocat #12 ${run(i + 1)}![i](https://evil.example/${i + 1}.png)<details>${run(i + 1)}`);
+// Each payload starts with its own tag (`r17 `), so that the oracle can tell it is rendered — not merely that nothing bad is.
+const RUN_NAMES = Array.from({ length: 100 }, (_, i) => `r${i + 1} <img src=x>@octocat #12 ${run(i + 1)}![i](https://evil.example/${i + 1}.png)<details>${run(i + 1)}`);
 // Codex's report: a run of 80, the first cmark-gfm does not read as a fence.
 const CODEX = `${run(80)} <img src=x> <details><summary>x</summary>y</details> @octocat #12 https://evil.example ${run(80)}`;
 const OTHER_NAMES = [
@@ -73,23 +74,35 @@ const OTHER_NAMES = [
   'x]y',
   'tab\there',
   LONG,
-];
+].map((n, i) => (n === LONG ? n : `o${i + 1} ${n}`)); // each its own tag (`o3 `): a payload is found by its identity, not inside another
 const FOLDED = [CODEX, LONG, ...RUN_NAMES.slice(77, 82), 'last'];
-const pathOf = (n) => `src/${run(n)}<img src=x>@octocat #12${run(n)}.test.ts`;
-const OTHER_PATHS = ['src/a|b|c.test.ts', 'src/x)y.test.ts', 'src/x]y.test.ts', 'src/@octocat/#12.test.ts', 'src/javascript:alert(1).test.ts', 'src/![i](https:/evil.example/p.png).test.ts', `src/${run(80)}<details>${run(80)}.test.ts`];
+const pathOf = (n) => `src/p${n}-${run(n)}<img src=x>@octocat #12${run(n)}.test.ts`;
+const OTHER_PATHS = ['src/a|b|c.test.ts', 'src/x)y.test.ts', 'src/x]y.test.ts', 'src/@octocat/#12.test.ts', 'src/javascript:alert(1).test.ts', 'src/![i](https:/evil.example/p.png).test.ts', `src/${run(80)}<details>${run(80)}.test.ts`].map((p, i) => p.replace('src/', `src/q${i + 1}-`));
+const COVERAGE_PATHS = Array.from({ length: 8 }, (_, i) => `pkg/c${i + 1}-${run(i * 11 + 1)}<img src=x>@octocat #12[l](https:evil.example)${run(i * 11 + 1)}_test.go`);
+const MANY = Array.from({ length: 700 }, (_, i) => `m${i + 1} <img src=x> @octocat #12 ${run((i % 100) + 1)} [l](https://evil.example/${i + 1}) ${'x'.repeat(40)}`);
 
-/** A pull request: files at base, files at head, and how many folded lists (<details>) the Action itself writes. */
+/**
+ * A pull request: files at base, files at head, how many folded lists (<details>) the Action itself writes, and the
+ * payloads (test names or paths) that must each be rendered inside code — every one of them: a case where the size limit
+ * leaves a payload out would prove nothing about it. `overflow`: a case too large for one comment, whose bounded comment
+ * shows a prefix of its payloads in order and counts the rest exactly, and whose job summary (the full report) shows all.
+ */
 const CASES = [
-  { name: 'backtick runs 1–100 and the 80 of Codex in test names', base: { 'src/names.test.ts': testFile([...RUN_NAMES, CODEX].map(literalSafe), 'test')('') }, head: { 'src/names.test.ts': testFile([...RUN_NAMES, CODEX], 'test')('.skip') }, details: 0 },
-  { name: 'mentions, references, a SHA, links, HTML, |, ), ] and 10,000 characters in test names', base: { 'src/other.test.ts': testFile(OTHER_NAMES.map(literalSafe), 'test')('') }, head: { 'src/other.test.ts': testFile(OTHER_NAMES, 'test')('.skip') }, details: 0 },
-  { name: 'the folded list of a grouped warning', base: { 'src/globals.test.js': testFile(FOLDED.map(literalSafe), 'it')('') }, head: { 'src/globals.test.js': testFile(FOLDED, 'it')('.skip') }, details: 1 },
+  { name: 'backtick runs 1–100 and the 80 of Codex in test names', base: { 'src/names.test.ts': testFile([...RUN_NAMES, CODEX].map(literalSafe), 'test')('') }, head: { 'src/names.test.ts': testFile([...RUN_NAMES, CODEX], 'test')('.skip') }, details: 0, payloads: [...RUN_NAMES, CODEX] },
+  { name: 'mentions, references, a SHA, links, HTML, |, ), ] and 10,000 characters in test names', base: { 'src/other.test.ts': testFile(OTHER_NAMES.map(literalSafe), 'test')('') }, head: { 'src/other.test.ts': testFile(OTHER_NAMES, 'test')('.skip') }, details: 0, payloads: OTHER_NAMES },
+  { name: 'the folded list of a grouped warning', base: { 'src/globals.test.js': testFile(FOLDED.map(literalSafe), 'it')('') }, head: { 'src/globals.test.js': testFile(FOLDED, 'it')('.skip') }, details: 1, payloads: FOLDED },
   ...[[1, 34], [35, 67], [68, 100]].map(([from, to]) => ({
     name: `backtick runs ${from}–${to} in removed files' paths`,
     base: Object.fromEntries(Array.from({ length: to - from + 1 }, (_, i) => [pathOf(from + i), testFile(['kept'], 'test')('')])),
     head: { 'src/keep.ts': 'export {};\n' },
     details: 0,
+    payloads: Array.from({ length: to - from + 1 }, (_, i) => pathOf(from + i)),
   })),
-  { name: "|, ), ], a mention, a reference, a scheme and an image in removed files' paths", base: Object.fromEntries(OTHER_PATHS.map((p) => [p, testFile(['kept'], 'test')('')])), head: { 'src/keep.ts': 'export {};\n' }, details: 0 },
+  { name: "|, ), ], a mention, a reference, a scheme and an image in removed files' paths", base: Object.fromEntries(OTHER_PATHS.map((p) => [p, testFile(['kept'], 'test')('')])), head: { 'src/keep.ts': 'export {};\n' }, details: 0, payloads: OTHER_PATHS },
+  // The coverage notice lists test files in a language saidvsdid does not read, by their paths.
+  { name: "mentions, references, HTML and backtick runs in the coverage notice's paths", base: {}, head: Object.fromEntries(COVERAGE_PATHS.map((p) => [p, 'package x\n'])), details: 0, payloads: COVERAGE_PATHS },
+  // Too many findings for one comment: the comment is bounded (its by-file list folded: one <details>).
+  { name: 'a pull request too large for one comment: the bounded comment and the full report', base: { 'src/many.test.ts': testFile(MANY.map(literalSafe), 'test')('') }, head: { 'src/many.test.ts': testFile(MANY, 'test')('.skip') }, details: 1, overflow: true, payloads: MANY },
 ];
 
 const ENV = { ...process.env, GIT_AUTHOR_NAME: 'oracle', GIT_AUTHOR_EMAIL: 'oracle@example.com', GIT_COMMITTER_NAME: 'oracle', GIT_COMMITTER_EMAIL: 'oracle@example.com' };
@@ -148,17 +161,20 @@ async function commentOf(dir, c, api) {
   const head = commit(repo, c.head, base, 'head');
   writeFileSync(join(dir, 'event.json'), JSON.stringify({ pull_request: { number: 1, base: { sha: base }, head: { sha: head } } }));
   writeFileSync(join(dir, 'output'), '');
+  writeFileSync(join(dir, 'summary.md'), '');
   // The environment GitHub gives a JavaScript action on a pull_request job: the inputs with their defaults (hyphens
   // kept), the event, the workspace, the API. Nothing else of this process's own GITHUB_* reaches it.
   const env = Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GITHUB_') && !k.startsWith('INPUT_')));
   const result = await runBundle(repo, {
     ...env,
+    GITHUB_EVENT_NAME: 'pull_request',
     GITHUB_EVENT_PATH: join(dir, 'event.json'),
     GITHUB_REPOSITORY: REPOSITORY,
     GITHUB_WORKSPACE: repo,
     GITHUB_SERVER_URL: 'https://github.com',
     GITHUB_API_URL: api.base,
     GITHUB_OUTPUT: join(dir, 'output'),
+    GITHUB_STEP_SUMMARY: join(dir, 'summary.md'),
     'INPUT_FAIL-ON': 'none',
     INPUT_EXCLUDE: '',
     INPUT_COMMENT: 'true',
@@ -169,7 +185,7 @@ async function commentOf(dir, c, api) {
   api.posted.clear();
   const verdict = /^verdict=(.*)$/m.exec(readFileSync(join(dir, 'output'), 'utf8'))?.[1] ?? null;
   if (result.code !== 0 || body === null) throw new Error(`${c.name}: no comment posted (exit ${result.code}, verdict ${verdict}): ${(result.stdout + result.stderr).trim().slice(0, 400)}`);
-  return { body, verdict };
+  return { body, verdict, summary: readFileSync(join(dir, 'summary.md'), 'utf8') };
 }
 
 /** GitHub's rendering of `text`, as an issue comment of this repository would show it. */
@@ -179,8 +195,8 @@ function render(dir, text) {
   return execFileSync('gh', ['api', '-X', 'POST', '/markdown', '--input', input], { encoding: 'utf8', maxBuffer: 1 << 28 });
 }
 
-/** The elements GitHub writes for the Action's own Markdown (headings, lists, emphasis, code, links, <sub>, <details>, the icons' emoji). */
-const ELEMENTS = new Set(['div', 'h3', 'a', 'svg', 'path', 'p', 'ul', 'li', 'strong', 'em', 'code', 'sub', 'hr', 'details', 'summary', 'br', 'g-emoji']);
+/** The elements GitHub writes for the Action's own Markdown (headings, lists — the reproduction's is numbered —, emphasis, code, links, <sub>, <details>, the icons' emoji). */
+const ELEMENTS = new Set(['div', 'h3', 'a', 'svg', 'path', 'p', 'ul', 'ol', 'li', 'strong', 'em', 'code', 'sub', 'hr', 'details', 'summary', 'br', 'g-emoji']);
 
 /** What in GitHub's HTML did not come from the Action: one line per offending element. */
 function offences(html, details) {
@@ -200,6 +216,47 @@ function offences(html, details) {
   return out;
 }
 
+/** The text of every <code> element of GitHub's HTML, its entities decoded. */
+function codeTexts(html) {
+  const decode = (s) => s.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&amp;/g, '&');
+  return [...html.matchAll(/<code\b[^>]*>([\s\S]*?)<\/code>/g)].map((m) => decode(m[1]));
+}
+
+/**
+ * Whether a payload is rendered inside code: its first 100 code points (`whole`: all of it, for the full report, which shortens nothing) as the comment writes them — sanitised in a code
+ * span (backticks as ˋ), as they are inside a folded list's <code> (an HTML block: backticks stay), and either way with
+ * its quotes escaped (`\"`) when a message quotes it as a test's name.
+ */
+function inCode(html, payload, whole = false) {
+  const spaced = payload.replace(/[\r\n\t]/g, ' ');
+  // A quoted name is written as a JSON string's body (`\"`, `\t`, `\\`).
+  const quoted = JSON.stringify(payload).slice(1, -1);
+  const forms = [spaced, quoted].flatMap((s) => [s, s.replace(/`/g, 'ˋ')]).map((s) => (whole ? s : [...s].slice(0, 100).join('')));
+  const texts = codeTexts(html);
+  return forms.some((f) => texts.some((t) => t.includes(f)));
+}
+
+/**
+ * Every payload of a case is rendered inside code — by identity, each one: a payload the size limit left out would prove
+ * nothing. An overflow case shows a prefix of its payloads, in order, and its omission line counts the rest exactly.
+ */
+function rendered(c, body, html) {
+  const out = [];
+  if (!c.overflow) {
+    if (/not shown here/.test(body)) out.push('findings left out by the size limit: split the case');
+    const missing = c.payloads.filter((p) => !inCode(html, p));
+    if (missing.length > 0) out.push(`${missing.length} payloads not rendered in code, the first ${JSON.stringify(missing[0].slice(0, 40))}`);
+    return out;
+  }
+  const shown = body.split('\n').filter((l) => /^- (❌|⚠️|ℹ️) \*\*/.test(l)).length;
+  const total = c.payloads.length;
+  if (shown === 0 || shown >= total) out.push(`an overflow case shows ${shown} of ${total} findings`);
+  if (!body.includes(`**${total - shown} of ${total} findings are not shown here**`)) out.push(`no exact omission line for ${total - shown} of ${total}`);
+  const wrong = c.payloads.filter((p, i) => inCode(html, p) !== i < shown);
+  if (wrong.length > 0) out.push(`${wrong.length} payloads out of order (the comment shows a prefix), the first ${JSON.stringify(wrong[0].slice(0, 40))}`);
+  return out;
+}
+
 const keep = process.argv.includes('--keep');
 const root = mkdtempSync(join(tmpdir(), 'saidvsdid-gfm-'));
 let failed = 0;
@@ -208,12 +265,20 @@ try {
   for (const [i, c] of CASES.entries()) {
     const dir = join(root, String(i));
     mkdirSync(dir);
-    const { body, verdict } = await commentOf(dir, c, api);
+    const { body, verdict, summary } = await commentOf(dir, c, api);
     const html = render(dir, body);
     writeFileSync(join(dir, 'comment.md'), body);
     writeFileSync(join(dir, 'comment.html'), html);
-    // A finding the size limit leaves out is a payload not rendered: the case would prove nothing.
-    const bad = [...offences(html, c.details), ...(/more findings? not shown/.test(body) ? ['findings left out by the size limit: split the case'] : [])];
+    const bad = [...offences(html, c.details), ...rendered(c, body, html)];
+    if (c.overflow) {
+      // The job summary is the full report: every payload rendered in code, nothing left out, inert as the comment.
+      const full = render(dir, summary);
+      writeFileSync(join(dir, 'summary.html'), full);
+      bad.push(...offences(full, c.details).map((o) => `summary: ${o}`));
+      const missing = c.payloads.filter((p) => !inCode(full, p, true));
+      if (missing.length > 0) bad.push(`summary: ${missing.length} payloads not rendered in code, the first ${JSON.stringify(missing[0].slice(0, 40))}`);
+      if (/not shown here/.test(summary)) bad.push('summary: findings left out of the full report');
+    }
     const sizes = `${body.length} characters of Markdown, ${html.length} of HTML`;
     console.log(`${bad.length === 0 ? 'inert ' : 'UNSAFE'}  ${c.name} (verdict ${verdict}; ${sizes})`);
     for (const b of bad.slice(0, 12)) console.log(`        ${b}`);

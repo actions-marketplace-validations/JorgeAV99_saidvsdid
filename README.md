@@ -16,7 +16,10 @@ happened, with a link to each line, before you read the rest of the change.
 - Reads the code, does not run it: the syntax tree of each test file and the
   runner's configuration, at the base and at the head of the pull request.
 - JavaScript/TypeScript (Vitest, Jest, Playwright, node:test, mocha-style) and
-  Python (pytest, unittest).
+  Python (pytest, unittest). A `FAIL` needs the runner's API imported from it;
+  with Jest's or Mocha's globals (`it.skip` with no import) a skip is a `WARN`.
+  Every report says how many of the changed test files it read, in part or
+  not at all (a Go test, a runner it does not know): an `OK` covers only them.
 - Deterministic and offline: no network, no telemetry, no LLM. The Action uses
   only the job's `GITHUB_TOKEN`, to post its comment.
 - It does not block by default: the check is green whatever it finds, until
@@ -32,9 +35,11 @@ location links to its line):
 <!-- example:comment -->
 > ### saidvsdid: what this pull request does to the tests
 >
+> **Coverage:** 1 test file analysed
+>
 > **Tests removed or replaced**
 >
-> - ⚠️ **WARN** `src/cart.test.ts:18` (removed) — `Removes test "total > rounds to cents"` <sub>TG001</sub>
+> - ⚠️ **WARN** `src/cart.test.ts:18` (base) — `Removes test "total > rounds to cents"` <sub>TG001</sub>
 >
 > **Tests skipped, focused or marked to fail**
 >
@@ -48,21 +53,19 @@ location links to its line):
 >
 > - ⚠️ **WARN** `vitest.config.ts:6` — `Test scope reduced by ˋexcludeˋ entry ˋsrc/checkout.test.tsˋ: likely excludes 1 test file that ran at base: "src/checkout.test.ts"` <sub>TG005</sub>
 >
-> Not evaluated: TG006, TG007 (experimental) — `no transcript or evidence (--transcript, --evidence)`.
->
 > ---
 >
 > **Verdict: FAIL** · 1 fail · 3 warn · 0 info — this check does not block the merge, whatever the verdict (`fail-on` not set).
 >
-> <sub>saidvsdid 0.2.0 · base `d2025824aa4f` → head `5b530048dd1f` · FAIL: a fact about the code, checkable by reading it · WARN: for a human to look at · `npx saidvsdid explain <RULE>` says what each rule catches and what it does not</sub>
+> <sub>saidvsdid 0.3.0 · base `d2025824aa4f` → head `5b530048dd1f` · FAIL: a fact about the code, checkable by reading it · WARN: for a human to look at · `npx saidvsdid explain <RULE>` says what each rule catches and what it does not · TG006, TG007 (experimental, the agent's claims): not evaluated, the Action reads no transcript</sub>
 <!-- /example:comment -->
 
 The same pull request from the command line:
 
 <!-- example:cli -->
 ```text
-saidvsdid 0.2.0 — base d2025824aa4f → head 5b530048dd1f
-rules: TG001, TG002, TG003, TG004, TG005 · test files analysed: 1
+saidvsdid 0.3.0 — base d2025824aa4f → head 5b530048dd1f
+rules: TG001, TG002, TG003, TG004, TG005 · 1 test file analysed
 not evaluated: TG006 (experimental) — no transcript or evidence (--transcript, --evidence)
 not evaluated: TG007 (experimental) — no transcript or evidence (--transcript, --evidence)
 
@@ -99,7 +102,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: saidvsdid-${{ github.event.pull_request.number }}
+  group: saidvsdid-${{ github.workflow }}-${{ (github.event_name == 'pull_request' || github.event_name == 'pull_request_target') && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
   cancel-in-progress: true
 
 jobs:
@@ -109,12 +112,16 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
-      - uses: JorgeAV99/saidvsdid@6e184a8ff14a5bcc607f4b3440055a56d54435c5 # v0.2.0
+      - uses: JorgeAV99/saidvsdid@4435bfdd2782a42bfe85ad6028eb8a595485ff48 # v0.3.0
 ```
 <!-- /example:workflow -->
 
 On every push to the pull request it updates the same comment (it never adds
-a second one) and writes the same report to the job summary.
+a second one) and writes the same report to the job summary. A pull request
+too large for one comment (GitHub's limit is 65,536 characters) gets the totals
+by kind and by file first, as many findings as fit, the exact number it does
+not show, and the full report (Markdown and JSON) attached to the job as an
+artifact, linked from the comment; the job summary holds the full report too.
 
 - **Pin it by its full commit SHA**, with the release as a comment, as
   above: a commit cannot change, so your job runs the code of the release
@@ -127,14 +134,25 @@ a second one) and writes the same report to the job summary.
   what code runs in your job, with its token's `pull-requests: write`.
 - `fetch-depth: 0`: the diff runs from where the pull request left its base
   branch to its head, so both must be in the clone.
+- Other events: on `push`, `workflow_dispatch`, `merge_group` or any event that
+  is not `pull_request` or `pull_request_target`, the step writes a notice
+  ("saidvsdid runs on pull_request events; nothing to check here"), sets
+  `verdict` to `SKIPPED` and stays green whatever `fail-on` says. So adding it
+  to a workflow that also runs on pushes is harmless. With a merge queue and
+  saidvsdid as a required check, add `merge_group` to `on:` so that the queue
+  sees the check: green there means the merge group's commit was not analysed;
+  the analysis is the pull request's own run.
 - `pull-requests: write` is only for the comment. A pull request from a fork
   gets a read-only token: the comment is not posted (a warning says so) and
   the report is still in the job summary.
 - From v0.2.0 the Action runs on GitHub's own Node.js 24 and installs
   nothing: it is one bundle (`dist/action/`) with what it reads (v0.1.0
   builds itself with `npm ci` on the runner's Node.js 20 or later). Python is
-  the runner's (`python3`, else `python`; GitHub's hosted runners have it):
-  any CPython that python.org supports (3.11–3.15 today, each tested in CI).
+  the runner's (`python3`, else `python`): any CPython that python.org
+  supports (3.11–3.15 today, each tested in CI). `ubuntu-latest`, `macos-latest`
+  and `windows-latest` have one; `ubuntu-22.04`'s `python3` is 3.10, so add
+  `actions/setup-python` with `python-version: '3.11'` or later before saidvsdid
+  (the comment says so when it finds an older one).
   A newer Python is used as it is: saidvsdid does not refuse it, and if its
   reader fails on a file, that file is a `WARN` (`scope_unavailable`), never
   `OK` and never a `FAIL`. Without Python, or with one older than 3.11, each
@@ -147,13 +165,14 @@ a second one) and writes the same report to the job summary.
 | `comment` | `true` | `false`: the job summary only. |
 | `github-token` | the job's `GITHUB_TOKEN` | From v0.2.0. The token that posts the comment; keep the default. |
 
-Outputs: `verdict` (`OK`, `WARN`, `FAIL`, `UNVERIFIABLE`, `ERROR`),
-`exit-code` (the CLI's) and `comment-url`.
+Outputs: `verdict` (`OK`, `WARN`, `FAIL`, `UNVERIFIABLE`, `ERROR`, or
+`SKIPPED` on an event that is not a pull request's), `exit-code` (the CLI's;
+empty when `SKIPPED`) and `comment-url`.
 
 ### Make it block
 
 ```yaml
-      - uses: JorgeAV99/saidvsdid@6e184a8ff14a5bcc607f4b3440055a56d54435c5 # v0.2.0
+      - uses: JorgeAV99/saidvsdid@4435bfdd2782a42bfe85ad6028eb8a595485ff48 # v0.3.0
         with:
           fail-on: fail   # or: warn
 ```
@@ -175,7 +194,7 @@ npx saidvsdid check --base origin/main
 
 | Command | What it does |
 |---|---|
-| `check --base <ref> [--head <ref>]` | Analyse the diff `base..head`. `--format text\|json\|md`, `--output <file>`, `--rules TG001,TG002`, `--exclude <glob>`; `--transcript <file>` or `--evidence <file>` for the experimental claim rules (below) |
+| `check --base <ref> [--head <ref>]` | Analyse what the branch changes since it left `<ref>`: the diff from their merge base to the head, as a pull request's "Files changed" and the Action show it (`--exact-base` compares the two commits as they are). `--format text\|json\|md`, `--output <file>`, `--rules TG001,TG002`, `--exclude <glob>`; `--transcript <file>` or `--evidence <file>` for the experimental claim rules (below) |
 | `explain <RULE>` | What a rule catches, what it deliberately ignores, and its limits |
 | `baseline --base <ref>` | The same diff through plain regular expressions, the [deliberately simple rival](docs/rules.md#baseline-the-deliberately-simple-rival) the rules are compared with |
 
@@ -206,7 +225,9 @@ tests, never that the tests are good.
   assertion, a configuration change. Known gaps (a skip through a helper
   function, among others) are listed in
   [docs/known-limitations.md](docs/known-limitations.md).
-- `OK`: no findings in what saidvsdid reads; nothing more.
+- `OK`: no findings in what saidvsdid read; nothing more. When some changed
+  test files were read only in part or not at all, the `OK` says so and lists
+  them; with none detected, it says that instead.
 - `UNVERIFIABLE` / `ERROR`: the check could not be completed; never a pass.
 
 Messages describe the code ("adds `it.skip` to test 'x'", "removes 2

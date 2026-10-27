@@ -7,7 +7,7 @@ import { runBaseline } from './baseline.js';
 import { runCheck, transcriptContext } from './check.js';
 import { evidenceFromSession, type FromTranscriptOptions } from './evidence/from-transcript.js';
 import { EVIDENCE_SCHEMA_ID, parseEvidence, validateEvidence, type Evidence } from './evidence/schema.js';
-import { repoRoot, resolveCommit } from './git/diff.js';
+import { repoRoot, selectBase } from './git/diff.js';
 import { runWrapped } from './run.js';
 import { packageScripts } from './transcript/commands.js';
 import { assertKnown, parseTranscript, type AgentOption } from './transcript/index.js';
@@ -30,17 +30,19 @@ Did the agent do what it said? Checks test tampering in a diff; warns the review
 claims and the visible evidence disagree (TG006/TG007, experimental: warnings, never verified).
 
 Usage:
-  saidvsdid check --base <ref> [--head <ref>] [options]
+  saidvsdid check --base <ref> [--head <ref>] [--exact-base] [options]
   saidvsdid explain <RULE>
   saidvsdid evidence validate <evidence.json>
   saidvsdid evidence from-transcript <file> [--agent auto|claude|codex] [--repo <dir>]
-                     [--base <ref> --head <ref>] [--cwd <dir>] [--strict] [--output <file>]
+                     [--base <ref> --head <ref> [--exact-base]] [--cwd <dir>] [--strict] [--output <file>]
   saidvsdid run [--output <evidence.json>] -- <command...>
-  saidvsdid baseline --base <ref> [--head <ref>] [--format ...] [--output ...]
+  saidvsdid baseline --base <ref> [--head <ref>] [--exact-base] [--format ...] [--output ...]
 
 check options:
-  --base <ref>         Base commit (required)
+  --base <ref>         Base (required): compared from its merge base with the head, as a
+                       pull request's "Files changed" (and the GitHub Action) compare it
   --head <ref>         Head commit (default: HEAD)
+  --exact-base         Compare the base commit itself, not its merge base with the head
   --repo <dir>         Repository path (default: current directory)
   --format <fmt>       text | json | md (default: text)
   --output <file>      Write the report to a file instead of stdout
@@ -85,6 +87,7 @@ async function cmdCheck(args: string[], io: Io): Promise<number> {
     options: {
       base: { type: 'string' },
       head: { type: 'string', default: 'HEAD' },
+      'exact-base': { type: 'boolean', default: false },
       repo: { type: 'string' },
       format: { type: 'string', default: 'text' },
       output: { type: 'string' },
@@ -120,6 +123,7 @@ async function cmdCheck(args: string[], io: Io): Promise<number> {
     repo: values.repo ?? io.cwd,
     base: values.base,
     head: values.head,
+    exactBase: values['exact-base'],
     ...(rules ? { rules } : {}),
     exclude: values.exclude ?? [],
     evidence,
@@ -166,6 +170,7 @@ function cmdBaseline(args: string[], io: Io): number {
     options: {
       base: { type: 'string' },
       head: { type: 'string', default: 'HEAD' },
+      'exact-base': { type: 'boolean', default: false },
       repo: { type: 'string' },
       format: { type: 'string', default: 'text' },
       output: { type: 'string' },
@@ -175,7 +180,7 @@ function cmdBaseline(args: string[], io: Io): number {
   });
   if (!values.base) throw new UsageError('baseline: --base <ref> is required');
   const format = checkFormat('baseline', values.format);
-  const report = runBaseline({ repo: values.repo ?? io.cwd, base: values.base, head: values.head });
+  const report = runBaseline({ repo: values.repo ?? io.cwd, base: values.base, head: values.head, exactBase: values['exact-base'] });
   return emit(report, format, values.output, io);
 }
 
@@ -212,6 +217,7 @@ function cmdFromTranscript(args: string[], io: Io): number {
       repo: { type: 'string' },
       base: { type: 'string' },
       head: { type: 'string' },
+      'exact-base': { type: 'boolean', default: false },
       cwd: { type: 'string' },
       strict: { type: 'boolean', default: false },
       output: { type: 'string' },
@@ -228,7 +234,9 @@ function cmdFromTranscript(args: string[], io: Io): number {
   let options: FromTranscriptOptions;
   if (values.base && values.head) {
     const repo = repoRoot(dir);
-    options = transcriptContext(repo, resolveCommit(repo, values.base), resolveCommit(repo, values.head));
+    // The commits `check` would compare (its merge base, unless --exact-base), so that the evidence binds to them.
+    const selected = selectBase(repo, values.base, values.head, values['exact-base']);
+    options = transcriptContext(repo, selected.base, selected.head);
   } else {
     // No commits: the working copy's package.json, if any, for `npm run x`.
     let text: string | null = null;

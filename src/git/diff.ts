@@ -4,6 +4,11 @@ export class GitError extends Error {
   override name = 'GitError';
 }
 
+/** A commit the check needs is not in the clone, or the history between base and head is cut (a shallow clone). */
+export class MissingHistoryError extends GitError {
+  override name = 'MissingHistoryError';
+}
+
 export type ChangeStatus = 'A' | 'M' | 'D' | 'R' | 'C' | 'T';
 
 export interface FileChange {
@@ -35,7 +40,39 @@ export function git(repo: string, args: string[]): string {
 
 export function resolveCommit(repo: string, ref: string): string {
   if (ref.startsWith('-')) throw new GitError(`invalid ref ${JSON.stringify(ref)}`);
-  return git(repo, ['rev-parse', '--verify', '--quiet', '--end-of-options', `${ref}^{commit}`]).trim();
+  try {
+    return git(repo, ['rev-parse', '--verify', '--quiet', '--end-of-options', `${ref}^{commit}`]).trim();
+  } catch {
+    throw new MissingHistoryError(`${JSON.stringify(ref)} is not a commit in this clone (git fetch it?)`);
+  }
+}
+
+/** What a check compares: the commit it diffs from, the head, and the ref given for the base when that is not the commit compared. */
+export interface SelectedBase {
+  base: string;
+  head: string;
+  /** The base as given and the commit it resolved to, when the compared commit is their merge base and not that commit. */
+  baseRef: { ref: string; sha: string } | null;
+}
+
+/**
+ * The commits a check compares, as GitHub's "Files changed" shows a pull request: from the merge base of `baseRef` and
+ * `headRef` to the head, so that a branch behind its base is never charged with what the base did after the branch left
+ * it. The Action and every command that takes `--base` use it; `exact` compares the two commits as they are.
+ */
+export function selectBase(repo: string, baseRef: string, headRef: string, exact = false): SelectedBase {
+  const given = resolveCommit(repo, baseRef);
+  const head = resolveCommit(repo, headRef);
+  if (exact) return { base: given, head, baseRef: null };
+  let base: string;
+  try {
+    base = git(repo, ['merge-base', given, head]).trim();
+  } catch {
+    const shallow = git(repo, ['rev-parse', '--is-shallow-repository']).trim() === 'true';
+    if (shallow) throw new MissingHistoryError(`the history between ${baseRef} and ${headRef} is not all in this shallow clone: fetch it whole (git fetch --unshallow, or fetch-depth: 0 on GitHub Actions)`);
+    throw new GitError(`${baseRef} and ${headRef} have no common ancestor (--exact-base compares the two commits as they are)`);
+  }
+  return { base, head, baseRef: base === given ? null : { ref: baseRef, sha: given } };
 }
 
 /** The tree of a commit. */
@@ -44,7 +81,11 @@ export function treeOf(repo: string, commit: string): string {
 }
 
 export function repoRoot(repo: string): string {
-  return git(repo, ['rev-parse', '--show-toplevel']).trim();
+  try {
+    return git(repo, ['rev-parse', '--show-toplevel']).trim();
+  } catch {
+    throw new GitError(`${repo} is not inside a git repository: run saidvsdid in a clone, or pass --repo <dir>`);
+  }
 }
 
 /** Files changed between two commits, with rename detection. */

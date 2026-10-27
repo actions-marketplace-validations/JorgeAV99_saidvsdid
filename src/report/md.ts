@@ -1,4 +1,5 @@
 import { EXPERIMENTAL } from '../rules/index.js';
+import { coverageCounts, incomplete } from '../coverage.js';
 import { verdictLabel, type Report } from './model.js';
 
 const ICON = { fail: '❌', warn: '⚠️', info: 'ℹ️' } as const;
@@ -19,9 +20,20 @@ export function renderMarkdown(report: Report): string {
       `${fail} fail · ${warn} warn · ${info} info · rules ${report.rules.map((r) => (EXPERIMENTAL.has(r) ? `${r} (experimental)` : r)).join(', ')}`,
   );
   lines.push('');
+  if (report.coverage) {
+    lines.push(`${incomplete(report.coverage) ? '⚠️ ' : ''}**Coverage:** ${coverageCounts(report.coverage)}`, '');
+    for (const f of report.coverage.files) {
+      if (f.state !== 'analysed') lines.push(`- \`${cell(f.path)}\` — ${f.state === 'partly-analysed' ? 'partly analysed' : 'not analysed'}: ${cell(f.reasons.join('; '))}`);
+    }
+    if (incomplete(report.coverage)) lines.push('');
+  }
   if (report.not_evaluated.length > 0) {
     for (const n of report.not_evaluated) lines.push(`- **Not evaluated:** ${n.rule}${EXPERIMENTAL.has(n.rule) ? ' (experimental)' : ''} — ${cell(n.reason)}`);
     lines.push('');
+  }
+  const scopes = report.tool.scopes;
+  if (scopes?.python_unavailable) {
+    lines.push(`- **Python test files were not read:** ${cell(scopes.python_unavailable)}${scopes.python_remedy ? ` — ${cell(scopes.python_remedy)}` : ''}`, '');
   }
   if (report.unverifiable.length > 0) {
     lines.push('**Unverifiable** — the verdict cannot be OK:');

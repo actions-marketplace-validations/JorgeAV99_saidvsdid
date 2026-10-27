@@ -600,7 +600,8 @@ export async function configNet(configs: NonNullable<NetInput['configs']>, tg005
       side: c.headPath === null ? 'base' : 'head',
       line: null,
       test: null,
-      message: `Test runner config changed; review manually${why || ': the analyzer did not report anything specific about it'}${detail}`,
+      // What the file is, when nothing more specific was found: it decides which tests run, and how much saidvsdid read of it.
+      message: `Test runner config changed; review manually${why || (/(?:^|\/)conftest\.py$/i.test(path) ? ': `conftest.py` can change which tests run and how (hooks, fixtures, marks), and saidvsdid does not analyse it' : ': saidvsdid found no specific change in the settings it reads, and the file decides which tests run')}${detail}`,
     });
   }
   return findings;

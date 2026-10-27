@@ -4641,7 +4641,7 @@ m2: ${this.mapper2.__debugToString().split("\n").join("\n    ")}`;
             return height2 + 1;
           }
           function computeColumnWidths(height2) {
-            const columns = fill(Array(height2), 0);
+            const columns = fill2(Array(height2), 0);
             for (const node of nodes) {
               columns[node.level] = Math.max(columns[node.level], node.text.length);
             }
@@ -4713,9 +4713,9 @@ m2: ${this.mapper2.__debugToString().split("\n").join("\n    ")}`;
           function renderGraph() {
             const columnCount = columnWidths.length;
             const laneCount = maxBy(nodes, 0, (n) => n.lane) + 1;
-            const lanes = fill(Array(laneCount), "");
+            const lanes = fill2(Array(laneCount), "");
             const grid = columnWidths.map(() => Array(laneCount));
-            const connectors = columnWidths.map(() => fill(Array(laneCount), 0));
+            const connectors = columnWidths.map(() => fill2(Array(laneCount), 0));
             for (const node of nodes) {
               grid[node.level][node.lane] = node;
               const children = getChildren(node);
@@ -4754,17 +4754,17 @@ m2: ${this.mapper2.__debugToString().split("\n").join("\n    ")}`;
             for (let column = 0; column < columnCount; column++) {
               for (let lane = 0; lane < lanes.length; lane++) {
                 const connector = connectors[column][lane];
-                const fill2 = connector & 4 ? "─" : " ";
+                const fill22 = connector & 4 ? "─" : " ";
                 const node = grid[column][lane];
                 if (!node) {
                   if (column < columnCount - 1) {
-                    writeLane(lane, repeat(fill2, columnWidths[column] + 1));
+                    writeLane(lane, repeat(fill22, columnWidths[column] + 1));
                   }
                 } else {
                   writeLane(lane, node.text);
                   if (column < columnCount - 1) {
                     writeLane(lane, " ");
-                    writeLane(lane, repeat(fill2, columnWidths[column] - node.text.length));
+                    writeLane(lane, repeat(fill22, columnWidths[column] - node.text.length));
                   }
                 }
                 writeLane(lane, getBoxCharacter(connector));
@@ -4805,7 +4805,7 @@ ${lanes.join("\n")}
             }
             return " ";
           }
-          function fill(array, value2) {
+          function fill2(array, value2) {
             if (array.fill) {
               array.fill(value2);
             } else {
@@ -79808,8 +79808,8 @@ ${lanes.join("\n")}
         function getTypeFromFlowType(flowType) {
           return flowType.flags === 0 ? flowType.type : flowType;
         }
-        function createFlowType(type, incomplete) {
-          return incomplete ? { flags: 0, type: type.flags & 131072 ? silentNeverType : type } : type;
+        function createFlowType(type, incomplete2) {
+          return incomplete2 ? { flags: 0, type: type.flags & 131072 ? silentNeverType : type } : type;
         }
         function createEvolvingArrayType(elementType) {
           const result = createObjectType(
@@ -175859,7 +175859,7 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
             /*isJavaScriptImplicitAny*/
             false
           );
-          if (filledIn.every((fill, i2) => fill === fullTypeArguments[i2])) {
+          if (filledIn.every((fill2, i2) => fill2 === fullTypeArguments[i2])) {
             return cutoff;
           }
         }
@@ -179128,8 +179128,8 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
         const symbolCompletion = getSymbolCompletionFromEntryId(program, log, sourceFile, position, entryId, host, preferences);
         switch (symbolCompletion.type) {
           case "request": {
-            const { request } = symbolCompletion;
-            switch (request.kind) {
+            const { request: request2 } = symbolCompletion;
+            switch (request2.kind) {
               case 1:
                 return ts_JsDoc_exports.getJSDocTagNameCompletionDetails(name2);
               case 2:
@@ -179137,14 +179137,14 @@ ${newComment.split("\n").map((c) => ` * ${c}`).join("\n")}
               case 3:
                 return ts_JsDoc_exports.getJSDocParameterNameCompletionDetails(name2);
               case 4:
-                return some(request.keywordCompletions, (c) => c.name === name2) ? createSimpleDetails(
+                return some(request2.keywordCompletions, (c) => c.name === name2) ? createSimpleDetails(
                   name2,
                   "keyword",
                   5
                   /* keyword */
                 ) : void 0;
               default:
-                return Debug.assertNever(request);
+                return Debug.assertNever(request2);
             }
           }
           case "symbol": {
@@ -198396,13 +198396,13 @@ ${options.prefix}` : "\n" : options.prefix
             this.sendResponse({ kind: ActionWatchTypingLocations, projectName, files: void 0 });
           }
         }
-        createSetTypings(request, typings) {
+        createSetTypings(request2, typings) {
           return {
-            projectName: request.projectName,
-            typeAcquisition: request.typeAcquisition,
-            compilerOptions: request.compilerOptions,
+            projectName: request2.projectName,
+            typeAcquisition: request2.typeAcquisition,
+            compilerOptions: request2.compilerOptions,
             typings,
-            unresolvedImports: request.unresolvedImports,
+            unresolvedImports: request2.unresolvedImports,
             kind: ActionSet
           };
         }
@@ -198413,10 +198413,10 @@ ${options.prefix}` : "\n" : options.prefix
         executeWithThrottling() {
           while (this.inFlightRequestCount < this.throttleLimit && this.pendingRunRequests.length) {
             this.inFlightRequestCount++;
-            const request = this.pendingRunRequests.pop();
-            this.installWorker(request.requestId, request.packageNames, request.cwd, (ok) => {
+            const request2 = this.pendingRunRequests.pop();
+            this.installWorker(request2.requestId, request2.packageNames, request2.cwd, (ok) => {
               this.inFlightRequestCount--;
-              request.onRequestCompleted(ok);
+              request2.onRequestCompleted(ok);
               this.executeWithThrottling();
             });
           }
@@ -206380,9 +206380,9 @@ ${json}${newLine}`;
             [
               "openExternalProject"
               /* OpenExternalProject */
-            ]: (request) => {
+            ]: (request2) => {
               this.projectService.openExternalProject(
-                request.arguments,
+                request2.arguments,
                 /*cleanupAfter*/
                 true
               );
@@ -206394,8 +206394,8 @@ ${json}${newLine}`;
             [
               "openExternalProjects"
               /* OpenExternalProjects */
-            ]: (request) => {
-              this.projectService.openExternalProjects(request.arguments.projects);
+            ]: (request2) => {
+              this.projectService.openExternalProjects(request2.arguments.projects);
               return this.requiredResponse(
                 /*response*/
                 true
@@ -206404,9 +206404,9 @@ ${json}${newLine}`;
             [
               "closeExternalProject"
               /* CloseExternalProject */
-            ]: (request) => {
+            ]: (request2) => {
               this.projectService.closeExternalProject(
-                request.arguments.projectFileName,
+                request2.arguments.projectFileName,
                 /*cleanupAfter*/
                 true
               );
@@ -206418,8 +206418,8 @@ ${json}${newLine}`;
             [
               "synchronizeProjectList"
               /* SynchronizeProjectList */
-            ]: (request) => {
-              const result = this.projectService.synchronizeProjectList(request.arguments.knownProjects, request.arguments.includeProjectReferenceRedirectInfo);
+            ]: (request2) => {
+              const result = this.projectService.synchronizeProjectList(request2.arguments.knownProjects, request2.arguments.includeProjectReferenceRedirectInfo);
               if (!result.some((p) => p.projectErrors && p.projectErrors.length !== 0)) {
                 return this.requiredResponse(result);
               }
@@ -206443,16 +206443,16 @@ ${json}${newLine}`;
             [
               "updateOpen"
               /* UpdateOpen */
-            ]: (request) => {
+            ]: (request2) => {
               this.changeSeq++;
               this.projectService.applyChangesInOpenFiles(
-                request.arguments.openFiles && mapIterator(request.arguments.openFiles, (file) => ({
+                request2.arguments.openFiles && mapIterator(request2.arguments.openFiles, (file) => ({
                   fileName: file.file,
                   content: file.fileContent,
                   scriptKind: file.scriptKindName,
                   projectRootPath: file.projectRootPath
                 })),
-                request.arguments.changedFiles && mapIterator(request.arguments.changedFiles, (file) => ({
+                request2.arguments.changedFiles && mapIterator(request2.arguments.changedFiles, (file) => ({
                   fileName: file.fileName,
                   changes: mapDefinedIterator(arrayReverseIterator(file.textChanges), (change) => {
                     const scriptInfo = Debug.checkDefined(this.projectService.getScriptInfo(file.fileName));
@@ -206461,7 +206461,7 @@ ${json}${newLine}`;
                     return start2 >= 0 ? { span: { start: start2, length: end - start2 }, newText: change.newText } : void 0;
                   })
                 })),
-                request.arguments.closedFiles
+                request2.arguments.closedFiles
               );
               return this.requiredResponse(
                 /*response*/
@@ -206471,16 +206471,16 @@ ${json}${newLine}`;
             [
               "applyChangedToOpenFiles"
               /* ApplyChangedToOpenFiles */
-            ]: (request) => {
+            ]: (request2) => {
               this.changeSeq++;
               this.projectService.applyChangesInOpenFiles(
-                request.arguments.openFiles,
-                request.arguments.changedFiles && mapIterator(request.arguments.changedFiles, (file) => ({
+                request2.arguments.openFiles,
+                request2.arguments.changedFiles && mapIterator(request2.arguments.changedFiles, (file) => ({
                   fileName: file.fileName,
                   // apply changes in reverse order
                   changes: arrayReverseIterator(file.changes)
                 })),
-                request.arguments.closedFiles
+                request2.arguments.closedFiles
               );
               return this.requiredResponse(
                 /*response*/
@@ -206500,9 +206500,9 @@ ${json}${newLine}`;
             [
               "definition"
               /* Definition */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getDefinition(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -206510,9 +206510,9 @@ ${json}${newLine}`;
             [
               "definition-full"
               /* DefinitionFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getDefinition(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -206520,9 +206520,9 @@ ${json}${newLine}`;
             [
               "definitionAndBoundSpan"
               /* DefinitionAndBoundSpan */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getDefinitionAndBoundSpan(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -206530,9 +206530,9 @@ ${json}${newLine}`;
             [
               "definitionAndBoundSpan-full"
               /* DefinitionAndBoundSpanFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getDefinitionAndBoundSpan(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -206540,27 +206540,27 @@ ${json}${newLine}`;
             [
               "findSourceDefinition"
               /* FindSourceDefinition */
-            ]: (request) => {
-              return this.requiredResponse(this.findSourceDefinition(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.findSourceDefinition(request2.arguments));
             },
             [
               "emit-output"
               /* EmitOutput */
-            ]: (request) => {
-              return this.requiredResponse(this.getEmitOutput(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getEmitOutput(request2.arguments));
             },
             [
               "typeDefinition"
               /* TypeDefinition */
-            ]: (request) => {
-              return this.requiredResponse(this.getTypeDefinition(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getTypeDefinition(request2.arguments));
             },
             [
               "implementation"
               /* Implementation */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getImplementation(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -206568,9 +206568,9 @@ ${json}${newLine}`;
             [
               "implementation-full"
               /* ImplementationFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getImplementation(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -206578,9 +206578,9 @@ ${json}${newLine}`;
             [
               "references"
               /* References */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getReferences(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -206588,9 +206588,9 @@ ${json}${newLine}`;
             [
               "references-full"
               /* ReferencesFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getReferences(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -206598,9 +206598,9 @@ ${json}${newLine}`;
             [
               "rename"
               /* Rename */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getRenameLocations(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -206608,9 +206608,9 @@ ${json}${newLine}`;
             [
               "renameLocations-full"
               /* RenameLocationsFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getRenameLocations(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -206618,28 +206618,28 @@ ${json}${newLine}`;
             [
               "rename-full"
               /* RenameInfoFull */
-            ]: (request) => {
-              return this.requiredResponse(this.getRenameInfo(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getRenameInfo(request2.arguments));
             },
             [
               "open"
               /* Open */
-            ]: (request) => {
+            ]: (request2) => {
               this.openClientFile(
-                toNormalizedPath(request.arguments.file),
-                request.arguments.fileContent,
-                convertScriptKindName(request.arguments.scriptKindName),
+                toNormalizedPath(request2.arguments.file),
+                request2.arguments.fileContent,
+                convertScriptKindName(request2.arguments.scriptKindName),
                 // TODO: GH#18217
-                request.arguments.projectRootPath ? toNormalizedPath(request.arguments.projectRootPath) : void 0
+                request2.arguments.projectRootPath ? toNormalizedPath(request2.arguments.projectRootPath) : void 0
               );
-              return this.notRequired(request);
+              return this.notRequired(request2);
             },
             [
               "quickinfo"
               /* Quickinfo */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getQuickInfoWorker(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -206647,9 +206647,9 @@ ${json}${newLine}`;
             [
               "quickinfo-full"
               /* QuickinfoFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getQuickInfoWorker(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -206657,9 +206657,9 @@ ${json}${newLine}`;
             [
               "getOutliningSpans"
               /* GetOutliningSpans */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getOutliningSpans(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -206667,9 +206667,9 @@ ${json}${newLine}`;
             [
               "outliningSpans"
               /* GetOutliningSpansFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getOutliningSpans(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -206677,51 +206677,51 @@ ${json}${newLine}`;
             [
               "todoComments"
               /* TodoComments */
-            ]: (request) => {
-              return this.requiredResponse(this.getTodoComments(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getTodoComments(request2.arguments));
             },
             [
               "indentation"
               /* Indentation */
-            ]: (request) => {
-              return this.requiredResponse(this.getIndentation(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getIndentation(request2.arguments));
             },
             [
               "nameOrDottedNameSpan"
               /* NameOrDottedNameSpan */
-            ]: (request) => {
-              return this.requiredResponse(this.getNameOrDottedNameSpan(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getNameOrDottedNameSpan(request2.arguments));
             },
             [
               "breakpointStatement"
               /* BreakpointStatement */
-            ]: (request) => {
-              return this.requiredResponse(this.getBreakpointStatement(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getBreakpointStatement(request2.arguments));
             },
             [
               "braceCompletion"
               /* BraceCompletion */
-            ]: (request) => {
-              return this.requiredResponse(this.isValidBraceCompletion(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.isValidBraceCompletion(request2.arguments));
             },
             [
               "docCommentTemplate"
               /* DocCommentTemplate */
-            ]: (request) => {
-              return this.requiredResponse(this.getDocCommentTemplate(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getDocCommentTemplate(request2.arguments));
             },
             [
               "getSpanOfEnclosingComment"
               /* GetSpanOfEnclosingComment */
-            ]: (request) => {
-              return this.requiredResponse(this.getSpanOfEnclosingComment(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getSpanOfEnclosingComment(request2.arguments));
             },
             [
               "fileReferences"
               /* FileReferences */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getFileReferences(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -206729,9 +206729,9 @@ ${json}${newLine}`;
             [
               "fileReferences-full"
               /* FileReferencesFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getFileReferences(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -206739,39 +206739,39 @@ ${json}${newLine}`;
             [
               "format"
               /* Format */
-            ]: (request) => {
-              return this.requiredResponse(this.getFormattingEditsForRange(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getFormattingEditsForRange(request2.arguments));
             },
             [
               "formatonkey"
               /* Formatonkey */
-            ]: (request) => {
-              return this.requiredResponse(this.getFormattingEditsAfterKeystroke(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getFormattingEditsAfterKeystroke(request2.arguments));
             },
             [
               "format-full"
               /* FormatFull */
-            ]: (request) => {
-              return this.requiredResponse(this.getFormattingEditsForDocumentFull(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getFormattingEditsForDocumentFull(request2.arguments));
             },
             [
               "formatonkey-full"
               /* FormatonkeyFull */
-            ]: (request) => {
-              return this.requiredResponse(this.getFormattingEditsAfterKeystrokeFull(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getFormattingEditsAfterKeystrokeFull(request2.arguments));
             },
             [
               "formatRange-full"
               /* FormatRangeFull */
-            ]: (request) => {
-              return this.requiredResponse(this.getFormattingEditsForRangeFull(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getFormattingEditsForRangeFull(request2.arguments));
             },
             [
               "completionInfo"
               /* CompletionInfo */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getCompletions(
-                request.arguments,
+                request2.arguments,
                 "completionInfo"
                 /* CompletionInfo */
               ));
@@ -206779,9 +206779,9 @@ ${json}${newLine}`;
             [
               "completions"
               /* Completions */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getCompletions(
-                request.arguments,
+                request2.arguments,
                 "completions"
                 /* Completions */
               ));
@@ -206789,9 +206789,9 @@ ${json}${newLine}`;
             [
               "completions-full"
               /* CompletionsFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getCompletions(
-                request.arguments,
+                request2.arguments,
                 "completions-full"
                 /* CompletionsFull */
               ));
@@ -206799,9 +206799,9 @@ ${json}${newLine}`;
             [
               "completionEntryDetails"
               /* CompletionDetails */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getCompletionEntryDetails(
-                request.arguments,
+                request2.arguments,
                 /*fullResult*/
                 false
               ));
@@ -206809,9 +206809,9 @@ ${json}${newLine}`;
             [
               "completionEntryDetails-full"
               /* CompletionDetailsFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getCompletionEntryDetails(
-                request.arguments,
+                request2.arguments,
                 /*fullResult*/
                 true
               ));
@@ -206819,21 +206819,21 @@ ${json}${newLine}`;
             [
               "compileOnSaveAffectedFileList"
               /* CompileOnSaveAffectedFileList */
-            ]: (request) => {
-              return this.requiredResponse(this.getCompileOnSaveAffectedFileList(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getCompileOnSaveAffectedFileList(request2.arguments));
             },
             [
               "compileOnSaveEmitFile"
               /* CompileOnSaveEmitFile */
-            ]: (request) => {
-              return this.requiredResponse(this.emitFile(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.emitFile(request2.arguments));
             },
             [
               "signatureHelp"
               /* SignatureHelp */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getSignatureHelpItems(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -206841,9 +206841,9 @@ ${json}${newLine}`;
             [
               "signatureHelp-full"
               /* SignatureHelpFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getSignatureHelpItems(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -206851,20 +206851,20 @@ ${json}${newLine}`;
             [
               "compilerOptionsDiagnostics-full"
               /* CompilerOptionsDiagnosticsFull */
-            ]: (request) => {
-              return this.requiredResponse(this.getCompilerOptionsDiagnostics(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getCompilerOptionsDiagnostics(request2.arguments));
             },
             [
               "encodedSyntacticClassifications-full"
               /* EncodedSyntacticClassificationsFull */
-            ]: (request) => {
-              return this.requiredResponse(this.getEncodedSyntacticClassifications(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getEncodedSyntacticClassifications(request2.arguments));
             },
             [
               "encodedSemanticClassifications-full"
               /* EncodedSemanticClassificationsFull */
-            ]: (request) => {
-              return this.requiredResponse(this.getEncodedSemanticClassifications(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getEncodedSemanticClassifications(request2.arguments));
             },
             [
               "cleanup"
@@ -206879,26 +206879,26 @@ ${json}${newLine}`;
             [
               "semanticDiagnosticsSync"
               /* SemanticDiagnosticsSync */
-            ]: (request) => {
-              return this.requiredResponse(this.getSemanticDiagnosticsSync(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getSemanticDiagnosticsSync(request2.arguments));
             },
             [
               "syntacticDiagnosticsSync"
               /* SyntacticDiagnosticsSync */
-            ]: (request) => {
-              return this.requiredResponse(this.getSyntacticDiagnosticsSync(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getSyntacticDiagnosticsSync(request2.arguments));
             },
             [
               "suggestionDiagnosticsSync"
               /* SuggestionDiagnosticsSync */
-            ]: (request) => {
-              return this.requiredResponse(this.getSuggestionDiagnosticsSync(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getSuggestionDiagnosticsSync(request2.arguments));
             },
             [
               "geterr"
               /* Geterr */
-            ]: (request) => {
-              this.errorCheck.startNew((next) => this.getDiagnostics(next, request.arguments.delay, request.arguments.files));
+            ]: (request2) => {
+              this.errorCheck.startNew((next) => this.getDiagnostics(next, request2.arguments.delay, request2.arguments.files));
               return this.notRequired(
                 /*request*/
                 void 0
@@ -206907,8 +206907,8 @@ ${json}${newLine}`;
             [
               "geterrForProject"
               /* GeterrForProject */
-            ]: (request) => {
-              this.errorCheck.startNew((next) => this.getDiagnosticsForProject(next, request.arguments.delay, request.arguments.file));
+            ]: (request2) => {
+              this.errorCheck.startNew((next) => this.getDiagnosticsForProject(next, request2.arguments.delay, request2.arguments.file));
               return this.notRequired(
                 /*request*/
                 void 0
@@ -206917,46 +206917,46 @@ ${json}${newLine}`;
             [
               "change"
               /* Change */
-            ]: (request) => {
-              this.change(request.arguments);
-              return this.notRequired(request);
+            ]: (request2) => {
+              this.change(request2.arguments);
+              return this.notRequired(request2);
             },
             [
               "configure"
               /* Configure */
-            ]: (request) => {
-              this.projectService.setHostConfiguration(request.arguments);
-              return this.notRequired(request);
+            ]: (request2) => {
+              this.projectService.setHostConfiguration(request2.arguments);
+              return this.notRequired(request2);
             },
             [
               "reload"
               /* Reload */
-            ]: (request) => {
-              this.reload(request.arguments);
+            ]: (request2) => {
+              this.reload(request2.arguments);
               return this.requiredResponse({ reloadFinished: true });
             },
             [
               "saveto"
               /* Saveto */
-            ]: (request) => {
-              const savetoArgs = request.arguments;
+            ]: (request2) => {
+              const savetoArgs = request2.arguments;
               this.saveToTmp(savetoArgs.file, savetoArgs.tmpfile);
-              return this.notRequired(request);
+              return this.notRequired(request2);
             },
             [
               "close"
               /* Close */
-            ]: (request) => {
-              const closeArgs = request.arguments;
+            ]: (request2) => {
+              const closeArgs = request2.arguments;
               this.closeClientFile(closeArgs.file);
-              return this.notRequired(request);
+              return this.notRequired(request2);
             },
             [
               "navto"
               /* Navto */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getNavigateToItems(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -206964,9 +206964,9 @@ ${json}${newLine}`;
             [
               "navto-full"
               /* NavtoFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getNavigateToItems(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -206974,9 +206974,9 @@ ${json}${newLine}`;
             [
               "brace"
               /* Brace */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getBraceMatching(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -206984,9 +206984,9 @@ ${json}${newLine}`;
             [
               "brace-full"
               /* BraceFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getBraceMatching(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -206994,9 +206994,9 @@ ${json}${newLine}`;
             [
               "navbar"
               /* NavBar */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getNavigationBarItems(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -207004,9 +207004,9 @@ ${json}${newLine}`;
             [
               "navbar-full"
               /* NavBarFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getNavigationBarItems(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -207014,9 +207014,9 @@ ${json}${newLine}`;
             [
               "navtree"
               /* NavTree */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getNavigationTree(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -207024,9 +207024,9 @@ ${json}${newLine}`;
             [
               "navtree-full"
               /* NavTreeFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getNavigationTree(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -207034,9 +207034,9 @@ ${json}${newLine}`;
             [
               "documentHighlights"
               /* DocumentHighlights */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getDocumentHighlights(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -207044,9 +207044,9 @@ ${json}${newLine}`;
             [
               "documentHighlights-full"
               /* DocumentHighlightsFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getDocumentHighlights(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -207054,8 +207054,8 @@ ${json}${newLine}`;
             [
               "compilerOptionsForInferredProjects"
               /* CompilerOptionsForInferredProjects */
-            ]: (request) => {
-              this.setCompilerOptionsForInferredProjects(request.arguments);
+            ]: (request2) => {
+              this.setCompilerOptionsForInferredProjects(request2.arguments);
               return this.requiredResponse(
                 /*response*/
                 true
@@ -207064,34 +207064,34 @@ ${json}${newLine}`;
             [
               "projectInfo"
               /* ProjectInfo */
-            ]: (request) => {
-              return this.requiredResponse(this.getProjectInfo(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getProjectInfo(request2.arguments));
             },
             [
               "reloadProjects"
               /* ReloadProjects */
-            ]: (request) => {
+            ]: (request2) => {
               this.projectService.reloadProjects();
-              return this.notRequired(request);
+              return this.notRequired(request2);
             },
             [
               "jsxClosingTag"
               /* JsxClosingTag */
-            ]: (request) => {
-              return this.requiredResponse(this.getJsxClosingTag(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getJsxClosingTag(request2.arguments));
             },
             [
               "linkedEditingRange"
               /* LinkedEditingRange */
-            ]: (request) => {
-              return this.requiredResponse(this.getLinkedEditingRange(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getLinkedEditingRange(request2.arguments));
             },
             [
               "getCodeFixes"
               /* GetCodeFixes */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getCodeFixes(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -207099,9 +207099,9 @@ ${json}${newLine}`;
             [
               "getCodeFixes-full"
               /* GetCodeFixesFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getCodeFixes(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -207109,9 +207109,9 @@ ${json}${newLine}`;
             [
               "getCombinedCodeFix"
               /* GetCombinedCodeFix */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getCombinedCodeFix(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -207119,9 +207119,9 @@ ${json}${newLine}`;
             [
               "getCombinedCodeFix-full"
               /* GetCombinedCodeFixFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getCombinedCodeFix(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -207129,27 +207129,27 @@ ${json}${newLine}`;
             [
               "applyCodeActionCommand"
               /* ApplyCodeActionCommand */
-            ]: (request) => {
-              return this.requiredResponse(this.applyCodeActionCommand(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.applyCodeActionCommand(request2.arguments));
             },
             [
               "getSupportedCodeFixes"
               /* GetSupportedCodeFixes */
-            ]: (request) => {
-              return this.requiredResponse(this.getSupportedCodeFixes(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getSupportedCodeFixes(request2.arguments));
             },
             [
               "getApplicableRefactors"
               /* GetApplicableRefactors */
-            ]: (request) => {
-              return this.requiredResponse(this.getApplicableRefactors(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getApplicableRefactors(request2.arguments));
             },
             [
               "getEditsForRefactor"
               /* GetEditsForRefactor */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getEditsForRefactor(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -207157,27 +207157,27 @@ ${json}${newLine}`;
             [
               "getMoveToRefactoringFileSuggestions"
               /* GetMoveToRefactoringFileSuggestions */
-            ]: (request) => {
-              return this.requiredResponse(this.getMoveToRefactoringFileSuggestions(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getMoveToRefactoringFileSuggestions(request2.arguments));
             },
             [
               "preparePasteEdits"
               /* PreparePasteEdits */
-            ]: (request) => {
-              return this.requiredResponse(this.preparePasteEdits(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.preparePasteEdits(request2.arguments));
             },
             [
               "getPasteEdits"
               /* GetPasteEdits */
-            ]: (request) => {
-              return this.requiredResponse(this.getPasteEdits(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.getPasteEdits(request2.arguments));
             },
             [
               "getEditsForRefactor-full"
               /* GetEditsForRefactorFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getEditsForRefactor(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -207185,9 +207185,9 @@ ${json}${newLine}`;
             [
               "organizeImports"
               /* OrganizeImports */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.organizeImports(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -207195,9 +207195,9 @@ ${json}${newLine}`;
             [
               "organizeImports-full"
               /* OrganizeImportsFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.organizeImports(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -207205,9 +207205,9 @@ ${json}${newLine}`;
             [
               "getEditsForFileRename"
               /* GetEditsForFileRename */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getEditsForFileRename(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -207215,9 +207215,9 @@ ${json}${newLine}`;
             [
               "getEditsForFileRename-full"
               /* GetEditsForFileRenameFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getEditsForFileRename(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -207225,16 +207225,16 @@ ${json}${newLine}`;
             [
               "configurePlugin"
               /* ConfigurePlugin */
-            ]: (request) => {
-              this.configurePlugin(request.arguments);
-              return this.notRequired(request);
+            ]: (request2) => {
+              this.configurePlugin(request2.arguments);
+              return this.notRequired(request2);
             },
             [
               "selectionRange"
               /* SelectionRange */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getSmartSelectionRange(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -207242,9 +207242,9 @@ ${json}${newLine}`;
             [
               "selectionRange-full"
               /* SelectionRangeFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.getSmartSelectionRange(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -207252,27 +207252,27 @@ ${json}${newLine}`;
             [
               "prepareCallHierarchy"
               /* PrepareCallHierarchy */
-            ]: (request) => {
-              return this.requiredResponse(this.prepareCallHierarchy(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.prepareCallHierarchy(request2.arguments));
             },
             [
               "provideCallHierarchyIncomingCalls"
               /* ProvideCallHierarchyIncomingCalls */
-            ]: (request) => {
-              return this.requiredResponse(this.provideCallHierarchyIncomingCalls(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.provideCallHierarchyIncomingCalls(request2.arguments));
             },
             [
               "provideCallHierarchyOutgoingCalls"
               /* ProvideCallHierarchyOutgoingCalls */
-            ]: (request) => {
-              return this.requiredResponse(this.provideCallHierarchyOutgoingCalls(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.provideCallHierarchyOutgoingCalls(request2.arguments));
             },
             [
               "toggleLineComment"
               /* ToggleLineComment */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.toggleLineComment(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -207280,9 +207280,9 @@ ${json}${newLine}`;
             [
               "toggleLineComment-full"
               /* ToggleLineCommentFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.toggleLineComment(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -207290,9 +207290,9 @@ ${json}${newLine}`;
             [
               "toggleMultilineComment"
               /* ToggleMultilineComment */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.toggleMultilineComment(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -207300,9 +207300,9 @@ ${json}${newLine}`;
             [
               "toggleMultilineComment-full"
               /* ToggleMultilineCommentFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.toggleMultilineComment(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -207310,9 +207310,9 @@ ${json}${newLine}`;
             [
               "commentSelection"
               /* CommentSelection */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.commentSelection(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -207320,9 +207320,9 @@ ${json}${newLine}`;
             [
               "commentSelection-full"
               /* CommentSelectionFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.commentSelection(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -207330,9 +207330,9 @@ ${json}${newLine}`;
             [
               "uncommentSelection"
               /* UncommentSelection */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.uncommentSelection(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 true
               ));
@@ -207340,9 +207340,9 @@ ${json}${newLine}`;
             [
               "uncommentSelection-full"
               /* UncommentSelectionFull */
-            ]: (request) => {
+            ]: (request2) => {
               return this.requiredResponse(this.uncommentSelection(
-                request.arguments,
+                request2.arguments,
                 /*simplifiedResult*/
                 false
               ));
@@ -207350,14 +207350,14 @@ ${json}${newLine}`;
             [
               "provideInlayHints"
               /* ProvideInlayHints */
-            ]: (request) => {
-              return this.requiredResponse(this.provideInlayHints(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.provideInlayHints(request2.arguments));
             },
             [
               "mapCode"
               /* MapCode */
-            ]: (request) => {
-              return this.requiredResponse(this.mapCode(request.arguments));
+            ]: (request2) => {
+              return this.requiredResponse(this.mapCode(request2.arguments));
             },
             [
               "copilotRelated"
@@ -207419,15 +207419,15 @@ ${json}${newLine}`;
               break;
             case 1:
               invalidPartialSemanticModeCommands.forEach(
-                (commandName) => this.handlers.set(commandName, (request) => {
-                  throw new Error(`Request: ${request.command} not allowed in LanguageServiceMode.PartialSemantic`);
+                (commandName) => this.handlers.set(commandName, (request2) => {
+                  throw new Error(`Request: ${request2.command} not allowed in LanguageServiceMode.PartialSemantic`);
                 })
               );
               break;
             case 2:
               invalidSyntacticModeCommands.forEach(
-                (commandName) => this.handlers.set(commandName, (request) => {
-                  throw new Error(`Request: ${request.command} not allowed in LanguageServiceMode.Syntactic`);
+                (commandName) => this.handlers.set(commandName, (request2) => {
+                  throw new Error(`Request: ${request2.command} not allowed in LanguageServiceMode.Syntactic`);
                 })
               );
               break;
@@ -209470,12 +209470,12 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
         }
         exit() {
         }
-        notRequired(request) {
-          if (request) this.doOutput(
+        notRequired(request2) {
+          if (request2) this.doOutput(
             /*info*/
             void 0,
-            request.command,
-            request.seq,
+            request2.command,
+            request2.seq,
             /*success*/
             true,
             this.performanceData
@@ -209513,12 +209513,12 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
             this.performanceData = currentPerformanceData;
           }
         }
-        executeCommand(request) {
-          const handler = this.handlers.get(request.command);
+        executeCommand(request2) {
+          const handler = this.handlers.get(request2.command);
           if (handler) {
             const response = this.executeWithRequestId(
-              request.seq,
-              () => handler(request),
+              request2.seq,
+              () => handler(request2),
               /*perfomanceData*/
               void 0
             );
@@ -209526,7 +209526,7 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
             return response;
           } else {
             this.logger.msg(
-              `Unrecognized JSON command:${stringifyIndented(request)}`,
+              `Unrecognized JSON command:${stringifyIndented(request2)}`,
               "Err"
               /* Err */
             );
@@ -209534,12 +209534,12 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
               /*info*/
               void 0,
               "unknown",
-              request.seq,
+              request2.seq,
               /*success*/
               false,
               /*performanceData*/
               void 0,
-              `Unrecognized JSON command: ${request.command}`
+              `Unrecognized JSON command: ${request2.command}`
             );
             return { responseRequired: false };
           }
@@ -209561,20 +209561,20 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
               this.logger.info(`request:${indent2(this.toStringMessage(message2))}`);
             }
           }
-          let request;
+          let request2;
           let relevantFile;
           try {
-            request = this.parseMessage(message2);
-            relevantFile = request.arguments && request.arguments.file ? request.arguments : void 0;
-            (_a = tracing) == null ? void 0 : _a.instant(tracing.Phase.Session, "request", { seq: request.seq, command: request.command });
+            request2 = this.parseMessage(message2);
+            relevantFile = request2.arguments && request2.arguments.file ? request2.arguments : void 0;
+            (_a = tracing) == null ? void 0 : _a.instant(tracing.Phase.Session, "request", { seq: request2.seq, command: request2.command });
             (_b = tracing) == null ? void 0 : _b.push(
               tracing.Phase.Session,
               "executeCommand",
-              { seq: request.seq, command: request.command },
+              { seq: request2.seq, command: request2.command },
               /*separateBeginAndEnd*/
               true
             );
-            const { response, responseRequired, performanceData } = this.executeCommand(request);
+            const { response, responseRequired, performanceData } = this.executeCommand(request2);
             (_c = tracing) == null ? void 0 : _c.pop();
             if (this.logger.hasLevel(
               2
@@ -209582,17 +209582,17 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
             )) {
               const elapsedTime = hrTimeToMilliseconds(this.hrtime(start2)).toFixed(4);
               if (responseRequired) {
-                this.logger.perftrc(`${request.seq}::${request.command}: elapsed time (in milliseconds) ${elapsedTime}`);
+                this.logger.perftrc(`${request2.seq}::${request2.command}: elapsed time (in milliseconds) ${elapsedTime}`);
               } else {
-                this.logger.perftrc(`${request.seq}::${request.command}: async elapsed time (in milliseconds) ${elapsedTime}`);
+                this.logger.perftrc(`${request2.seq}::${request2.command}: async elapsed time (in milliseconds) ${elapsedTime}`);
               }
             }
-            (_d = tracing) == null ? void 0 : _d.instant(tracing.Phase.Session, "response", { seq: request.seq, command: request.command, success: !!response });
+            (_d = tracing) == null ? void 0 : _d.instant(tracing.Phase.Session, "response", { seq: request2.seq, command: request2.command, success: !!response });
             if (response) {
               this.doOutput(
                 response,
-                request.command,
-                request.seq,
+                request2.command,
+                request2.seq,
                 /*success*/
                 true,
                 performanceData
@@ -209601,8 +209601,8 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
               this.doOutput(
                 /*info*/
                 void 0,
-                request.command,
-                request.seq,
+                request2.command,
+                request2.seq,
                 /*success*/
                 false,
                 performanceData,
@@ -209612,11 +209612,11 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
           } catch (err2) {
             (_e = tracing) == null ? void 0 : _e.popAll();
             if (err2 instanceof OperationCanceledException) {
-              (_f = tracing) == null ? void 0 : _f.instant(tracing.Phase.Session, "commandCanceled", { seq: request == null ? void 0 : request.seq, command: request == null ? void 0 : request.command });
+              (_f = tracing) == null ? void 0 : _f.instant(tracing.Phase.Session, "commandCanceled", { seq: request2 == null ? void 0 : request2.seq, command: request2 == null ? void 0 : request2.command });
               this.doOutput(
                 { canceled: true },
-                request.command,
-                request.seq,
+                request2.command,
+                request2.seq,
                 /*success*/
                 true,
                 this.performanceData
@@ -209624,12 +209624,12 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
               return;
             }
             this.logErrorWorker(err2, this.toStringMessage(message2), relevantFile);
-            (_g = tracing) == null ? void 0 : _g.instant(tracing.Phase.Session, "commandError", { seq: request == null ? void 0 : request.seq, command: request == null ? void 0 : request.command, message: err2.message });
+            (_g = tracing) == null ? void 0 : _g.instant(tracing.Phase.Session, "commandError", { seq: request2 == null ? void 0 : request2.seq, command: request2 == null ? void 0 : request2.command, message: err2.message });
             this.doOutput(
               /*info*/
               void 0,
-              request ? request.command : "unknown",
-              request ? request.seq : 0,
+              request2 ? request2.command : "unknown",
+              request2 ? request2.seq : 0,
               /*success*/
               false,
               this.performanceData,
@@ -210497,11 +210497,11 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
         }
         installPackage(options) {
           this.packageInstallId++;
-          const request = { kind: "installPackage", ...options, id: this.packageInstallId };
+          const request2 = { kind: "installPackage", ...options, id: this.packageInstallId };
           const promise = new Promise((resolve, reject) => {
             (this.packageInstalledPromise ?? (this.packageInstalledPromise = /* @__PURE__ */ new Map())).set(this.packageInstallId, { resolve, reject });
           });
-          this.installer.send(request);
+          this.installer.send(request2);
           return promise;
         }
         attach(projectService) {
@@ -210512,24 +210512,24 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
           this.installer.send({ projectName: p.getProjectName(), kind: "closeProject" });
         }
         enqueueInstallTypingsRequest(project, typeAcquisition, unresolvedImports) {
-          const request = createInstallTypingsRequest(project, typeAcquisition, unresolvedImports);
+          const request2 = createInstallTypingsRequest(project, typeAcquisition, unresolvedImports);
           if (this.logger.hasLevel(
             3
             /* verbose */
           )) {
-            this.logger.info(`TIAdapter:: Scheduling throttled operation:${stringifyIndented(request)}`);
+            this.logger.info(`TIAdapter:: Scheduling throttled operation:${stringifyIndented(request2)}`);
           }
           if (this.activeRequestCount < this.maxActiveRequestCount) {
-            this.scheduleRequest(request);
+            this.scheduleRequest(request2);
           } else {
             if (this.logger.hasLevel(
               3
               /* verbose */
             )) {
-              this.logger.info(`TIAdapter:: Deferring request for: ${request.projectName}`);
+              this.logger.info(`TIAdapter:: Deferring request for: ${request2.projectName}`);
             }
-            this.requestQueue.enqueue(request);
-            this.requestMap.set(request.projectName, request);
+            this.requestQueue.enqueue(request2);
+            this.requestMap.set(request2.projectName, request2);
           }
         }
         handleMessage(response) {
@@ -210631,12 +210631,12 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
               assertType(response);
           }
         }
-        scheduleRequest(request) {
+        scheduleRequest(request2) {
           if (this.logger.hasLevel(
             3
             /* verbose */
           )) {
-            this.logger.info(`TIAdapter:: Scheduling request for: ${request.projectName}`);
+            this.logger.info(`TIAdapter:: Scheduling request for: ${request2.projectName}`);
           }
           this.activeRequestCount++;
           this.host.setTimeout(
@@ -210645,12 +210645,12 @@ Additional information: BADCLIENT: Bad error code, ${badCode} not found in range
                 3
                 /* verbose */
               )) {
-                this.logger.info(`TIAdapter:: Sending request:${stringifyIndented(request)}`);
+                this.logger.info(`TIAdapter:: Sending request:${stringifyIndented(request2)}`);
               }
-              this.installer.send(request);
+              this.installer.send(request2);
             },
             _TypingsInstallerAdapter2.requestDelayMillis,
-            `${request.projectName}::${request.kind}`
+            `${request2.projectName}::${request2.kind}`
           );
         }
       };
@@ -218860,6 +218860,9 @@ import { execFileSync } from "node:child_process";
 var GitError = class extends Error {
   name = "GitError";
 };
+var MissingHistoryError = class extends GitError {
+  name = "MissingHistoryError";
+};
 var MAX_BUFFER = 512 * 1024 * 1024;
 function git(repo, args3) {
   try {
@@ -218879,13 +218882,35 @@ function git(repo, args3) {
 }
 function resolveCommit(repo, ref) {
   if (ref.startsWith("-")) throw new GitError(`invalid ref ${JSON.stringify(ref)}`);
-  return git(repo, ["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`]).trim();
+  try {
+    return git(repo, ["rev-parse", "--verify", "--quiet", "--end-of-options", `${ref}^{commit}`]).trim();
+  } catch {
+    throw new MissingHistoryError(`${JSON.stringify(ref)} is not a commit in this clone (git fetch it?)`);
+  }
+}
+function selectBase(repo, baseRef, headRef, exact = false) {
+  const given = resolveCommit(repo, baseRef);
+  const head = resolveCommit(repo, headRef);
+  if (exact) return { base: given, head, baseRef: null };
+  let base;
+  try {
+    base = git(repo, ["merge-base", given, head]).trim();
+  } catch {
+    const shallow = git(repo, ["rev-parse", "--is-shallow-repository"]).trim() === "true";
+    if (shallow) throw new MissingHistoryError(`the history between ${baseRef} and ${headRef} is not all in this shallow clone: fetch it whole (git fetch --unshallow, or fetch-depth: 0 on GitHub Actions)`);
+    throw new GitError(`${baseRef} and ${headRef} have no common ancestor (--exact-base compares the two commits as they are)`);
+  }
+  return { base, head, baseRef: base === given ? null : { ref: baseRef, sha: given } };
 }
 function treeOf(repo, commit) {
   return git(repo, ["rev-parse", "--verify", "--quiet", "--end-of-options", `${commit}^{tree}`]).trim();
 }
 function repoRoot(repo) {
-  return git(repo, ["rev-parse", "--show-toplevel"]).trim();
+  try {
+    return git(repo, ["rev-parse", "--show-toplevel"]).trim();
+  } catch {
+    throw new GitError(`${repo} is not inside a git repository: run saidvsdid in a clone, or pass --repo <dir>`);
+  }
 }
 function changedFiles2(repo, base, head) {
   const out2 = git(repo, ["diff", "--no-ext-diff", "--name-status", "-z", "-M", base, head, "--"]);
@@ -220703,6 +220728,15 @@ var MIN_LIMIT_MS = 6e4;
 var LIMIT_MS_PER_MB = 6e4;
 var RETRY_LIMIT_MS = 3e5;
 var STDERR_TAIL = 4096;
+var MINIMUM = [3, 11];
+function pythonRemedy(env2) {
+  const override = env2 ? `change SAIDVSDID_PYTHON (now ${JSON.stringify(env2)}) to one` : "put one first on PATH or set SAIDVSDID_PYTHON to it";
+  return `on GitHub Actions, add actions/setup-python with python-version ${MINIMUM.join(".")} or later before saidvsdid; elsewhere, ${override}`;
+}
+function olderThanMinimum(version) {
+  const [major, minor] = version.split(".").map(Number);
+  return major < MINIMUM[0] || major === MINIMUM[0] && minor < MINIMUM[1];
+}
 var runtime;
 var cache2 = /* @__PURE__ */ new Map();
 var CACHE_LIMIT2 = 4096;
@@ -220832,14 +220866,14 @@ function attempt(command, files, limitMs) {
   let dir = null;
   try {
     dir = mkdtempSync(join(tmpdir(), "saidvsdid-py-"));
-    const request = join(dir, "request.json");
+    const request2 = join(dir, "request.json");
     const reply = join(dir, "reply.json");
     const errors = join(dir, "stderr.txt");
-    writeFileSync(request, JSON.stringify({ files: files.map((f) => ({ id: f.id, source: Buffer.from(f.source).toString("base64") })) }), "utf8");
+    writeFileSync(request2, JSON.stringify({ files: files.map((f) => ({ id: f.id, source: Buffer.from(f.source).toString("base64") })) }), "utf8");
     const fds = [];
     let r;
     try {
-      fds.push(openSync(request, "r"), openSync(reply, "w"), openSync(errors, "w"));
+      fds.push(openSync(request2, "r"), openSync(reply, "w"), openSync(errors, "w"));
       r = spawnSync(command, ["-I", "-X", "utf8", SCRIPT], {
         stdio: [fds[0], fds[1], fds[2]],
         env: { ...process.env, PYTHONUTF8: "1" },
@@ -220876,6 +220910,13 @@ function tail(path2) {
     closeSync(fd);
   }
 }
+function runtimeOf(reply, command, env2) {
+  if (reply.supported) return { known: true, command, version: reply.python, tested: reply.tested };
+  if (olderThanMinimum(reply.python)) {
+    return { known: false, why: `Python ${reply.python} (${command}) is older than ${MINIMUM.join(".")}, the oldest saidvsdid reads`, version: reply.python, remedy: pythonRemedy(env2) };
+  }
+  return { known: false, why: reply.why ?? `Python ${reply.python} is not supported`, version: reply.python };
+}
 function pythonRuntime() {
   if (runtime) return runtime;
   const env2 = process.env["SAIDVSDID_PYTHON"];
@@ -220887,10 +220928,10 @@ function pythonRuntime() {
       tried.push(`${command}: ${reply.error}`);
       continue;
     }
-    runtime = reply.supported ? { known: true, command, version: reply.python, tested: reply.tested } : { known: false, why: reply.why ?? `Python ${reply.python} is not supported`, version: reply.python };
+    runtime = runtimeOf(reply, command, env2);
     return runtime;
   }
-  runtime = { known: false, why: `no Python interpreter runs the scope reader (${tried.join("; ")}); set SAIDVSDID_PYTHON`, version: null };
+  runtime = { known: false, why: `no Python interpreter runs the scope reader (${tried.join("; ")})`, version: null, remedy: pythonRemedy(env2) };
   return runtime;
 }
 function pythonRuntimeIfStarted() {
@@ -221742,12 +221783,98 @@ async function parseTestFile(path2, source, options = {}) {
 // src/check.ts
 var import_typescript4 = __toESM(require_typescript(), 1);
 
+// src/coverage.ts
+var FOREIGN_TESTS = [
+  { language: "Go", pattern: /(?:^|\/)[^/]+_test\.go$/i },
+  { language: "Ruby", pattern: /(?:^|\/)[^/]+_(?:spec|test)\.rb$/i },
+  { language: "Rust", pattern: /(?:^|\/)tests\/(?:[^/]+\/)*[^/]+\.rs$/i },
+  { language: "Java", pattern: /(?:^|\/)[^/]*Tests?\.java$/ },
+  { language: "Kotlin", pattern: /(?:^|\/)[^/]*Tests?\.kt$/ },
+  { language: "C#", pattern: /(?:^|\/)[^/]*Tests?\.cs$/ },
+  { language: "PHP", pattern: /(?:^|\/)[^/]*Test\.php$/ },
+  { language: "Elixir", pattern: /(?:^|\/)[^/]+_test\.exs$/i },
+  { language: "Swift", pattern: /(?:^|\/)[^/]*Tests\.swift$/ },
+  { language: "Dart", pattern: /(?:^|\/)[^/]+_test\.dart$/i },
+  { language: "C/C++", pattern: /(?:^|\/)[^/]+_test\.(?:cc|cpp)$/i },
+  { language: "Bats", pattern: /\.bats$/i }
+];
+function foreignTestLanguage(path2) {
+  const p = path2.replace(/\\/g, "/");
+  return FOREIGN_TESTS.find((f) => f.pattern.test(p))?.language ?? null;
+}
+var UNREAD_TEST_LIBRARIES = ["ava", "tap", "tape", "uvu", "zora", "bun:test", "mocha", "jasmine", "@japa/runner"];
+var LIBRARY_IMPORT = new RegExp(
+  `(?:\\bfrom\\s*|\\brequire\\s*\\(\\s*|\\bimport\\s*\\(\\s*|\\bimport\\s+)(['"])(${UNREAD_TEST_LIBRARIES.map((m) => m.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&")).join("|")})(?:\\/[^'"]*)?\\1`
+);
+function unreadLibraryOf(source) {
+  return LIBRARY_IMPORT.exec(source)?.[2] ?? null;
+}
+var RANK = { analysed: 0, "partly-analysed": 1, "not-analysed": 2 };
+function sideState(r) {
+  if (r.kind === "absent" || r.kind === "excluded" || r.kind === "other") return null;
+  if (r.kind === "foreign") return { state: "not-analysed", reason: `${r.language}, a language saidvsdid does not read` };
+  const f = r.file;
+  if (f.parseErrors) return { state: "not-analysed", reason: `syntax errors` };
+  if (f.notAnalysed) return { state: "not-analysed", reason: `${f.notAnalysed.why}` };
+  if (!f.scopes.known) return { state: "not-analysed", reason: `its names were not read (${f.scopes.why})` };
+  const library = r.source === null ? null : unreadLibraryOf(r.source);
+  if (library) return { state: "partly-analysed", reason: `it imports ${library}, a test library saidvsdid does not read` };
+  if (f.tests.length === 0) return r.named ? { state: "partly-analysed", reason: `no test recognised` } : null;
+  const uncertain3 = f.tests.find((t) => !t.binding.certain);
+  if (uncertain3 && !uncertain3.binding.certain) return { state: "partly-analysed", reason: `a runner saidvsdid is not certain of (${uncertain3.binding.why})` };
+  return { state: "analysed", reason: null };
+}
+function coverageOf(entries) {
+  const files = [];
+  let excluded = 0;
+  for (const { change, base, head } of entries) {
+    const present = [base, head].filter((r) => r.kind !== "absent");
+    if (present.length > 0 && present.every((r) => r.kind === "excluded")) {
+      excluded++;
+      continue;
+    }
+    const sides = ["base", "head"].flatMap((side) => {
+      const s = sideState(side === "base" ? base : head);
+      return s === null ? [] : [{ side, ...s }];
+    });
+    if (sides.length === 0) continue;
+    const state = sides.reduce((w, s) => RANK[s.state] > RANK[w] ? s.state : w, "analysed");
+    const why = sides.flatMap((s) => s.reason === null ? [] : [{ side: s.side, reason: s.reason }]);
+    const reasons = why.length === 2 && why[0].reason === why[1].reason ? [`base and head: ${why[0].reason}`] : why.map((w) => `${w.side}: ${w.reason}`);
+    files.push({
+      path: change.headPath ?? change.basePath,
+      base_path: change.basePath,
+      state,
+      reasons
+    });
+  }
+  files.sort((a, b) => a.path < b.path ? -1 : a.path > b.path ? 1 : 0);
+  const count = (s) => files.filter((f) => f.state === s).length;
+  return { analysed: count("analysed"), partly_analysed: count("partly-analysed"), not_analysed: count("not-analysed"), excluded, files };
+}
+function coverageCounts(c) {
+  const parts2 = [`${c.analysed} test file${c.analysed === 1 ? "" : "s"} analysed`];
+  if (c.partly_analysed > 0) parts2.push(`${c.partly_analysed} partly analysed`);
+  if (c.not_analysed > 0) parts2.push(`${c.not_analysed} not analysed`);
+  if (c.excluded > 0) parts2.push(`${c.excluded} changed path${c.excluded === 1 ? "" : "s"} excluded`);
+  return parts2.join(" · ");
+}
+var incomplete = (c) => c.partly_analysed + c.not_analysed > 0;
+
 // src/report/model.ts
 var REPORT_SCHEMA_ID = "saidvsdid/report/v1";
 var EXIT_CODES = { OK: 0, WARN: 1, FAIL: 2, UNVERIFIABLE: 3, ERROR: 3 };
-function verdictLabel(report) {
+function verdictLabel(report, options = {}) {
   if (report.verdict !== "OK") return report.verdict;
-  const notEvaluated = report.not_evaluated.map((n) => n.rule);
+  const c = report.coverage;
+  if (c && c.analysed + c.partly_analysed + c.not_analysed === 0) {
+    return `OK — no test files detected in the selected scope${c.excluded > 0 ? ` (${c.excluded} changed path${c.excluded === 1 ? "" : "s"} excluded)` : ""}`;
+  }
+  if (c && incomplete(c)) {
+    const n = c.partly_analysed + c.not_analysed;
+    return `OK — no findings in what it read; ${n} test file${n === 1 ? "" : "s"} partly analysed or not analysed (${coverageCounts(c)})`;
+  }
+  const notEvaluated = options.claims === false ? [] : report.not_evaluated.map((n) => n.rule);
   if (notEvaluated.length) return `OK — no issues found (${notEvaluated.join(", ")} not evaluated)`;
   return report.mode === "diff" ? "OK — no issues found" : "OK — no issues found (claims not verified)";
 }
@@ -223104,7 +223231,8 @@ async function configNet(configs, tg005Files) {
       side: c.headPath === null ? "base" : "head",
       line: null,
       test: null,
-      message: `Test runner config changed; review manually${why || ": the analyzer did not report anything specific about it"}${detail}`
+      // What the file is, when nothing more specific was found: it decides which tests run, and how much saidvsdid read of it.
+      message: `Test runner config changed; review manually${why || (/(?:^|\/)conftest\.py$/i.test(path2) ? ": `conftest.py` can change which tests run and how (hooks, fixtures, marks), and saidvsdid does not analyse it" : ": saidvsdid found no specific change in the settings it reads, and the file decides which tests run")}${detail}`
     });
   }
   return findings;
@@ -225555,8 +225683,9 @@ async function load(read, readBytes, reading, side, path2) {
 }
 async function runCheck2(options) {
   const repo = repoRoot(options.repo);
-  const base = resolveCommit(repo, options.base);
-  const head = resolveCommit(repo, options.head);
+  const selected = selectBase(repo, options.base, options.head, options.exactBase ?? false);
+  const { base, head } = selected;
+  const baseRef = selected.baseRef && options.baseLabel ? { ...selected.baseRef, ref: options.baseLabel } : selected.baseRef;
   const listings = /* @__PURE__ */ new Map();
   const stored = /* @__PURE__ */ new Map();
   const blobBytes = (side, path2) => {
@@ -225595,7 +225724,8 @@ async function runCheck2(options) {
     model: context.model,
     ...options.transcript ? { evidenceLabel: options.transcript.label } : options.evidenceLabel ? { evidenceLabel: options.evidenceLabel } : {},
     repoDir: repo,
-    f2p: options.f2p ?? null
+    f2p: options.f2p ?? null,
+    baseRef
   });
 }
 function bindEvidence(ev, base, head, headTree) {
@@ -225681,9 +225811,12 @@ async function analyze(input) {
     if (facts === void 0) readings.set(key3, facts = pythonFacts(bytes2));
     return facts;
   };
+  const loaded = /* @__PURE__ */ new Map();
   for (const change of changes) {
     const b = change.basePath && candidate(change.basePath) ? await load(read, readBytes, reading, "base", change.basePath) : null;
     const h = change.headPath && candidate(change.headPath) ? await load(read, readBytes, reading, "head", change.headPath) : null;
+    if (b) loaded.set(`base\0${b.path}`, b);
+    if (h) loaded.set(`head\0${h.path}`, h);
     for (const [file, side] of [[b, "base"], [h, "head"]]) {
       if (file?.parseErrors) {
         unverifiable.push({ file: file.path, side, reason: "syntax errors; test extraction may be incomplete" });
@@ -225715,6 +225848,16 @@ async function analyze(input) {
       });
     }
   }
+  const sideReading = (side, p) => {
+    if (p === null) return { kind: "absent" };
+    if (matchesAny(p, exclude)) return { kind: "excluded" };
+    const language = foreignTestLanguage(p);
+    if (language) return { kind: "foreign", language };
+    const file = loaded.get(`${side}\0${p}`);
+    if (!file) return { kind: "other" };
+    return { kind: "parsed", file, source: file.language === "python" ? null : read(side, p), named: isTestPath(p) };
+  };
+  const coverage = coverageOf(input.changes.map((change) => ({ change, base: sideReading("base", change.basePath), head: sideReading("head", change.headPath) })));
   const allChanges = input.changes.filter((c) => [c.basePath, c.headPath].some((p) => p !== null && !matchesAny(p, exclude)));
   const parsed = /* @__PURE__ */ new Map();
   const ctx = {
@@ -225825,7 +225968,7 @@ async function analyze(input) {
   return {
     schema: REPORT_SCHEMA_ID,
     tool: { name: "saidvsdid", version: VERSION, scopes: scopeTools() },
-    repo: { base, head },
+    repo: { base, head, ...input.baseRef ? { base_ref: input.baseRef } : {} },
     mode,
     rules: selected.map((r) => r.id).filter((id) => !notEvaluated.some((n) => n.rule === id)),
     not_evaluated: notEvaluated,
@@ -225834,6 +225977,7 @@ async function analyze(input) {
     counts: counts2,
     unverifiable,
     files: summaries.sort((a, b) => compareStr(a.path, b.path)),
+    coverage,
     findings: findings.map(({ tampering: _, ...f }) => f)
   };
 }
@@ -225842,7 +225986,7 @@ function scopeTools() {
   return {
     typescript: import_typescript4.default.version,
     python: py === null ? null : py.known ? py.version : null,
-    ...py !== null && !py.known ? { python_unavailable: py.why } : {},
+    ...py !== null && !py.known ? { python_unavailable: py.why, ...py.remedy ? { python_remedy: py.remedy } : {} } : {},
     // Read as any other version (docs/rules.md, *Python*): recorded, never a change of verdict.
     ...py !== null && py.known && !py.tested ? { python_untested: `Python ${py.version} is newer than the versions saidvsdid's CI tests; it reads the files as any other version, and anything it fails on is a WARN` } : {}
   };
@@ -225866,83 +226010,369 @@ var GROUPS = [
 ];
 var LINE_ENDING = /\r\n?|\n/g;
 var MAX_TEXT = 200;
-function shorten(s) {
+function shorten(s, full = false) {
+  if (full) return s;
   const points = [...s];
   return points.length > MAX_TEXT ? `${points.slice(0, MAX_TEXT - 1).join("")}…` : s;
 }
-function sanitize(s) {
-  return shorten(s.replace(/`/g, "ˋ").replace(/[\r\n\t]/g, " "));
+function sanitize(s, full = false) {
+  return shorten(s.replace(/`/g, "ˋ").replace(/[\r\n\t]/g, " "), full);
 }
-function literal2(s) {
-  const text = sanitize(s);
+function literal2(s, full = false) {
+  const text = sanitize(s, full);
   return text === "" ? "` `" : `\`${text}\``;
 }
-function htmlLiteral(s) {
-  return `<code>${shorten(s.replace(LINE_ENDING, " ")).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}</code>`;
+function htmlLiteral(s, full = false) {
+  return `<code>${shorten(s.replace(LINE_ENDING, " "), full).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")}</code>`;
 }
 function destination(url) {
   const bytes = new TextEncoder();
   return url.replace(/[^A-Za-z0-9\-._~:/?#[\]@!$&'*+,;=%]/gu, (c) => [...bytes.encode(c)].map((b) => `%${b.toString(16).toUpperCase().padStart(2, "0")}`).join(""));
 }
-function location(f, link) {
-  const label = `${literal2(f.line === null ? f.file : `${f.file}:${f.line}`)}${f.side === "base" ? " (removed)" : ""}`;
+function location(f, link, full) {
+  const label = `${literal2(f.line === null ? f.file : `${f.file}:${f.line}`, full)}${f.side === "base" ? " (base)" : ""}`;
   const url = link ? link(f.side, f.file, f.line) : null;
   return url ? `[${label}](${destination(url)})` : label;
 }
-function item(f, link) {
-  const out2 = [`- ${ICON[f.severity]} **${f.severity.toUpperCase()}** ${location(f, link)} — ${literal2(f.message)} <sub>${f.rule}</sub>`];
-  if (f.tests && f.tests.length > 5) out2.push(`  <details><summary>${f.tests.length} tests</summary>${f.tests.map(htmlLiteral).join("<br>")}</details>`);
-  return out2;
+var FOLDED_BUDGET = 2e3;
+function item(f, link, mode) {
+  const full = mode === "full";
+  const out2 = [`- ${ICON[f.severity]} **${f.severity.toUpperCase()}** ${location(f, link, full)} — ${literal2(f.message, full)} <sub>${f.rule}</sub>`];
+  if (f.tests && f.tests.length > 5) {
+    const tests = f.tests.map((t) => htmlLiteral(t, full));
+    const shown = mode === "bounded" ? fill(tests, FOLDED_BUDGET, (n) => `and ${n} more`) : { lines: tests, cut: false };
+    out2.push(`  <details><summary>${f.tests.length} tests</summary>${shown.lines.join("<br>")}</details>`);
+    return { lines: out2, cut: shown.cut };
+  }
+  return { lines: out2, cut: false };
 }
 function gateText(failOn) {
   if (failOn === "warn") return "this check fails only on WARN or worse (`fail-on: warn`)";
   if (failOn === "fail") return "this check fails only on FAIL or worse (`fail-on: fail`)";
   return "this check does not block the merge, whatever the verdict (`fail-on` not set)";
 }
-function renderComment(report, options) {
-  const max = options.maxLength ?? 65e3;
+var BUDGETS = { coverage: 4e3, byFile: 1e4, unverifiable: 4e3, rest: 3e3 };
+function fill(lines, budget, more) {
+  const out2 = [];
+  let used = 0;
+  for (let i2 = 0; i2 < lines.length; i2++) {
+    const tail2 = i2 === lines.length - 1 ? 0 : more(lines.length - i2 - 1).length + 1;
+    if (used + lines[i2].length + 1 + tail2 > budget) {
+      out2.push(more(lines.length - i2));
+      return { lines: out2, cut: true };
+    }
+    out2.push(lines[i2]);
+    used += lines[i2].length + 1;
+  }
+  return { lines: out2, cut: false };
+}
+var SAFE_GLOB = /^[A-Za-z0-9._/*?{},!+=@:-]+$/;
+var MAX_COMMAND = 190;
+function reproduction(r) {
+  const out2 = [
+    `The full report could not be attached (${literal2(r.why)}). Reproduce it with the whole history:`,
+    "",
+    `1. \`git fetch origin ${r.baseSha} +refs/pull/${r.pr}/head\`, and \`git fetch --unshallow\` if the clone is shallow;`
+  ];
+  const excludes = r.exclude.map((g) => `--exclude='${g}'`);
+  const command = `npx saidvsdid@${r.version} check --exact-base --base ${r.mergeBase} --head ${r.head}${excludes.length ? ` ${excludes.join(" ")}` : ""}`;
+  if (r.exclude.every((g) => SAFE_GLOB.test(g)) && [...command].length <= MAX_COMMAND) out2.push(`2. \`${command}\`.`);
+  else {
+    out2.push(
+      `2. \`npx saidvsdid@${r.version} check --exact-base --base ${r.mergeBase} --head ${r.head}\` with the same \`--exclude\` globs as this workflow's \`exclude\` input (${r.exclude.length}): the exact command does not fit here.`
+    );
+  }
+  out2.push("", `npm's saidvsdid ${r.version} has the Action's version string; a build of the Action between releases may differ from it. The Python on your machine may change Python files' results.`);
+  return out2;
+}
+var NO_TRANSCRIPT = "no transcript or evidence (--transcript, --evidence)";
+function compose(report, options, mode, shown) {
+  const full = mode === "full";
+  const lines = [COMMENT_MARKER, "### saidvsdid: what this pull request does to the tests", ""];
+  let cut = false;
+  const scopes = report.tool.scopes;
+  if (scopes?.python_unavailable) lines.push(`⚠️ **Python test files were not read:** ${literal2(scopes.python_unavailable, true)}${scopes.python_remedy ? ` — ${literal2(scopes.python_remedy, true)}` : ""}`, "");
+  if (report.coverage) {
+    const c = report.coverage;
+    lines.push(`${incomplete(c) ? "⚠️ " : ""}**Coverage:** ${coverageCounts(c)}`, "");
+    const partial = c.files.filter((f) => f.state !== "analysed").map((f) => `- ${literal2(f.path, full)} — ${f.state === "partly-analysed" ? "partly analysed" : "not analysed"}: ${literal2(f.reasons.join("; "), full)}`);
+    const listed = mode === "bounded" ? fill(partial, BUDGETS.coverage, (n) => `- and ${n} more`) : { lines: partial, cut: false };
+    cut ||= listed.cut;
+    if (listed.lines.length > 0) lines.push(...listed.lines, "");
+  }
   const groups = GROUPS.map((g) => ({ title: g.title, findings: report.findings.filter((f) => g.rules.includes(f.rule)) })).filter((g) => g.findings.length > 0);
-  const render = (shown) => {
-    const lines = [COMMENT_MARKER, "### saidvsdid: what this pull request does to the tests", ""];
-    let left = shown;
-    let hidden = 0;
-    if (groups.length === 0) lines.push(report.unverifiable.length > 0 ? "No findings in the files that could be analysed." : "No findings in what saidvsdid reads.", "");
-    for (const g of groups) {
-      lines.push(`**${g.title}**`, "");
-      for (const f of g.findings) {
-        if (left > 0) lines.push(...item(f, options.link));
-        else hidden++;
-        left--;
+  const total = report.findings.length;
+  if (mode !== "whole" && total > 0) {
+    const { fail: fail2, warn: warn2, info: info3 } = report.counts;
+    lines.push(`**${total} finding${total === 1 ? "" : "s"}:** ${fail2} FAIL · ${warn2} WARN · ${info3} INFO`, "");
+    for (const g of groups) lines.push(`- ${g.title}: ${g.findings.length}`);
+    const perFile = /* @__PURE__ */ new Map();
+    for (const f of report.findings) {
+      const n = perFile.get(f.file) ?? { fail: 0, warn: 0, info: 0 };
+      n[f.severity]++;
+      perFile.set(f.file, n);
+    }
+    const files = [...perFile].sort((a, b) => b[1].fail + b[1].warn + b[1].info - (a[1].fail + a[1].warn + a[1].info) || (a[0] < b[0] ? -1 : 1));
+    const rows = files.map(([file, n]) => `${htmlLiteral(file, full)}: ${[n.fail && `${n.fail} FAIL`, n.warn && `${n.warn} WARN`, n.info && `${n.info} INFO`].filter(Boolean).join(" · ")}`);
+    const open = `<details><summary>Findings by file (${files.length} file${files.length === 1 ? "" : "s"})</summary>`;
+    const listed = mode === "bounded" ? fill(rows, BUDGETS.byFile - open.length - 10, (n) => `and ${n} more file${n === 1 ? "" : "s"}`) : { lines: rows, cut: false };
+    cut ||= listed.cut;
+    lines.push("", `${open}${listed.lines.join("<br>")}</details>`, "");
+  }
+  if (groups.length === 0) lines.push(report.unverifiable.length > 0 ? "No findings in the files that could be analysed." : "No findings in what saidvsdid reads.", "");
+  let left = shown;
+  for (const g of groups) {
+    const items = [];
+    for (const f of g.findings) {
+      if (left > 0) {
+        const it = item(f, options.link, mode);
+        items.push(...it.lines);
+        cut ||= it.cut;
       }
-      lines.push("");
+      left--;
     }
-    if (hidden > 0) lines.push(`_${hidden} more finding${hidden === 1 ? "" : "s"} not shown (comment size limit): run \`npx saidvsdid check\` for the full report._`, "");
-    if (report.unverifiable.length > 0) {
-      lines.push("**Could not be analysed** — the verdict cannot be OK:", "");
-      for (const u of report.unverifiable) lines.push(`- ${literal2(u.file)} (${u.side}): ${literal2(u.reason)}`);
-      lines.push("");
-    }
-    const reasons = /* @__PURE__ */ new Map();
-    for (const n of report.not_evaluated) reasons.set(n.reason, [...reasons.get(n.reason) ?? [], n.rule]);
+    if (items.length > 0) lines.push(`**${g.title}**`, "", ...items, "");
+  }
+  const hidden = total - Math.min(shown, total);
+  if (hidden > 0) lines.push(`**${hidden} of ${total} findings are not shown here** (GitHub's size limit for a comment).`, "");
+  cut ||= hidden > 0;
+  if (report.unverifiable.length > 0) {
+    lines.push("**Could not be analysed** — the verdict cannot be OK:", "");
+    const rows = report.unverifiable.map((u) => `- ${literal2(u.file, full)} (${u.side}): ${literal2(u.reason, full)}`);
+    const listed = mode === "bounded" ? fill(rows, BUDGETS.unverifiable, (n) => `- and ${n} more`) : { lines: rows, cut: false };
+    cut ||= listed.cut;
+    lines.push(...listed.lines, "");
+  }
+  if (cut && mode === "bounded" && options.rest) {
+    const rest = options.rest.kind === "artifact" ? [`The full report, every finding (Markdown and JSON), is this job's artifact: [saidvsdid report](${options.rest.url}).`] : reproduction(options.rest);
+    lines.push(...fill(rest, BUDGETS.rest, () => "The rest of the report could not be described here.").lines, "");
+  }
+  const reasons = /* @__PURE__ */ new Map();
+  for (const n of report.not_evaluated) reasons.set(n.reason, [...reasons.get(n.reason) ?? [], n.rule]);
+  const claimsOnly = reasons.size === 1 && reasons.has(NO_TRANSCRIPT);
+  if (!claimsOnly) {
     for (const [reason, rules] of reasons) {
       const experimental = rules.every((r) => EXPERIMENTAL.has(r)) ? " (experimental)" : "";
       lines.push(`Not evaluated: ${rules.join(", ")}${experimental} — ${literal2(reason)}.`, "");
     }
-    const { fail, warn, info: info2 } = report.counts;
-    lines.push("---", "");
-    lines.push(`**Verdict: ${verdictLabel(report)}** · ${fail} fail · ${warn} warn · ${info2} info — ${gateText(options.failOn)}.`, "");
-    lines.push(
-      `<sub>saidvsdid ${report.tool.version} · base \`${report.repo.base.slice(0, 12)}\` → head \`${report.repo.head.slice(0, 12)}\` · FAIL: a fact about the code, checkable by reading it · WARN: for a human to look at · \`npx saidvsdid explain <RULE>\` says what each rule catches and what it does not</sub>`
-    );
-    return lines.join("\n") + "\n";
-  };
-  const total = report.findings.length;
-  let body2 = render(total);
-  for (let shown = total; body2.length > max && shown > 0; ) {
-    shown = Math.floor(shown / 2);
-    body2 = render(shown);
   }
-  return body2;
+  const { fail, warn, info: info2 } = report.counts;
+  lines.push("---", "");
+  lines.push(`**Verdict: ${verdictLabel(report, { claims: !claimsOnly })}** · ${fail} fail · ${warn} warn · ${info2} info — ${gateText(options.failOn)}.`, "");
+  const notEvaluated = claimsOnly ? ` · ${reasons.get(NO_TRANSCRIPT).join(", ")} (experimental, the agent's claims): not evaluated, the Action reads no transcript` : "";
+  lines.push(
+    `<sub>saidvsdid ${report.tool.version} · base \`${report.repo.base.slice(0, 12)}\` → head \`${report.repo.head.slice(0, 12)}\` · FAIL: a fact about the code, checkable by reading it · WARN: for a human to look at · \`npx saidvsdid explain <RULE>\` says what each rule catches and what it does not${notEvaluated}</sub>`
+  );
+  return { body: lines.join("\n") + "\n", cut };
+}
+function commentFits(report, options) {
+  return compose(report, options, "whole", report.findings.length).body.length <= (options.maxLength ?? 65e3);
+}
+function renderComment(report, options) {
+  const max = options.maxLength ?? 65e3;
+  const total = report.findings.length;
+  if (options.full) return compose(report, options, "full", total).body;
+  const whole = compose(report, options, "whole", total).body;
+  if (whole.length <= max) return whole;
+  const at = (k) => compose(report, options, "bounded", k).body;
+  if (at(total).length <= max) return at(total);
+  let lo = 0;
+  let hi = total - 1;
+  while (lo < hi) {
+    const mid = Math.ceil((lo + hi) / 2);
+    if (at(mid).length <= max) lo = mid;
+    else hi = mid - 1;
+  }
+  return at(lo);
+}
+
+// src/report/json.ts
+function renderJson(report) {
+  return JSON.stringify(report, null, 2) + "\n";
+}
+
+// src/action/artifact.ts
+import { createHash as createHash4, randomBytes } from "node:crypto";
+var TIMEOUT_MS = 3e4;
+var ATTEMPTS = 3;
+var BACKOFF_MS = [1e3, 2e3];
+var SERVICE = "twirp/github.actions.results.api.v1.ArtifactService";
+var UploadError = class extends Error {
+};
+function artifactsSupported(serverUrl) {
+  let host;
+  try {
+    host = new URL(serverUrl || "https://github.com").hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return host === "github.com" || host.endsWith(".ghe.com") || host.endsWith(".ghe.localhost");
+}
+function backendIds(token) {
+  const payload = token.split(".")[1];
+  if (!payload) return null;
+  let claims;
+  try {
+    claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+  } catch {
+    return null;
+  }
+  const scp = typeof claims === "object" && claims !== null ? claims["scp"] : void 0;
+  if (typeof scp !== "string") return null;
+  for (const scope of scp.split(" ")) {
+    const parts2 = scope.split(":");
+    if (parts2[0] === "Actions.Results" && parts2.length === 3 && parts2[1] && parts2[2]) return { run: parts2[1], job: parts2[2] };
+  }
+  return null;
+}
+var CRC_TABLE = (() => {
+  const t = new Uint32Array(256);
+  for (let n = 0; n < 256; n++) {
+    let c = n;
+    for (let k = 0; k < 8; k++) c = c & 1 ? 3988292384 ^ c >>> 1 : c >>> 1;
+    t[n] = c >>> 0;
+  }
+  return t;
+})();
+function crc32(bytes) {
+  let c = 4294967295;
+  for (const b of bytes) c = CRC_TABLE[(c ^ b) & 255] ^ c >>> 8;
+  return (c ^ 4294967295) >>> 0;
+}
+function zip(files) {
+  const local = [];
+  const central = [];
+  let offset = 0;
+  for (const f of files) {
+    const name2 = Buffer.from(f.name, "utf8");
+    const data = Buffer.from(f.bytes);
+    const crc = crc32(data);
+    const header = Buffer.alloc(30);
+    header.writeUInt32LE(67324752, 0);
+    header.writeUInt16LE(20, 4);
+    header.writeUInt16LE(2048, 6);
+    header.writeUInt16LE(0, 8);
+    header.writeUInt16LE(0, 10);
+    header.writeUInt16LE(33, 12);
+    header.writeUInt32LE(crc, 14);
+    header.writeUInt32LE(data.length, 18);
+    header.writeUInt32LE(data.length, 22);
+    header.writeUInt16LE(name2.length, 26);
+    header.writeUInt16LE(0, 28);
+    local.push(header, name2, data);
+    const entry = Buffer.alloc(46);
+    entry.writeUInt32LE(33639248, 0);
+    entry.writeUInt16LE(20, 4);
+    entry.writeUInt16LE(20, 6);
+    entry.writeUInt16LE(2048, 8);
+    entry.writeUInt16LE(0, 10);
+    entry.writeUInt16LE(0, 12);
+    entry.writeUInt16LE(33, 14);
+    entry.writeUInt32LE(crc, 16);
+    entry.writeUInt32LE(data.length, 20);
+    entry.writeUInt32LE(data.length, 24);
+    entry.writeUInt16LE(name2.length, 28);
+    entry.writeUInt32LE(offset, 42);
+    central.push(entry, name2);
+    offset += header.length + name2.length + data.length;
+  }
+  const directory = Buffer.concat(central);
+  const end = Buffer.alloc(22);
+  end.writeUInt32LE(101010256, 0);
+  end.writeUInt16LE(files.length, 8);
+  end.writeUInt16LE(files.length, 10);
+  end.writeUInt32LE(directory.length, 12);
+  end.writeUInt32LE(offset, 16);
+  return new Uint8Array(Buffer.concat([...local, directory, end]));
+}
+async function request(deps, step, url, init2) {
+  const sleep = deps.sleep ?? ((ms) => new Promise((r) => setTimeout(r, ms)));
+  let last = "";
+  for (let attempt2 = 0; attempt2 < ATTEMPTS; attempt2++) {
+    if (attempt2 > 0) await sleep(BACKOFF_MS[attempt2 - 1] ?? BACKOFF_MS[BACKOFF_MS.length - 1]);
+    let res;
+    try {
+      res = await deps.fetch(url, { ...init2, redirect: "error", signal: AbortSignal.timeout(TIMEOUT_MS) });
+    } catch {
+      last = `${step}: the request failed`;
+      continue;
+    }
+    if (res.status === 429 || res.status >= 500) {
+      last = `${step}: HTTP ${res.status}`;
+      continue;
+    }
+    return res;
+  }
+  throw new UploadError(last);
+}
+async function twirp(deps, origin, token, method, body2) {
+  const res = await request(deps, method, `${origin}/${SERVICE}/${method}`, {
+    method: "POST",
+    headers: new Headers([
+      ["authorization", `Bearer ${token}`],
+      ["content-type", "application/json"],
+      ["accept", "application/json"]
+    ]),
+    body: JSON.stringify(body2)
+  });
+  let json = null;
+  try {
+    json = await res.json();
+  } catch {
+    json = null;
+  }
+  return { status: res.status, json: typeof json === "object" && json !== null && !Array.isArray(json) ? json : null };
+}
+async function uploadArtifact(files, deps) {
+  const env2 = deps.env;
+  if (!artifactsSupported(env2["GITHUB_SERVER_URL"])) return { ok: false, why: "this GitHub server has no v4 artifacts (GitHub Enterprise Server)" };
+  const token = env2["ACTIONS_RUNTIME_TOKEN"];
+  const results = env2["ACTIONS_RESULTS_URL"];
+  const [owner, repo, ...rest] = (env2["GITHUB_REPOSITORY"] ?? "").split("/");
+  const runId = env2["GITHUB_RUN_ID"];
+  if (!token || !results || !owner || !repo || rest.length > 0 || !runId || !/^\d+$/.test(runId)) return { ok: false, why: "the job has no artifact credentials (ACTIONS_RUNTIME_TOKEN, ACTIONS_RESULTS_URL)" };
+  let origin;
+  try {
+    const u = new URL(results);
+    if (u.protocol !== "https:") return { ok: false, why: "ACTIONS_RESULTS_URL is not https" };
+    origin = u.origin;
+  } catch {
+    return { ok: false, why: "ACTIONS_RESULTS_URL is not a URL" };
+  }
+  const ids = backendIds(token);
+  if (!ids) return { ok: false, why: "the runtime token names no workflow run and job" };
+  const body2 = zip(files);
+  const sha2562 = createHash4("sha256").update(body2).digest("hex");
+  const job = (env2["GITHUB_JOB"] ?? "job").replace(/[^A-Za-z0-9_.-]/g, "-").slice(0, 60);
+  const suffix = deps.suffix ?? (() => randomBytes(4).toString("hex"));
+  try {
+    for (let attempt2 = 0; attempt2 < 2; attempt2++) {
+      const name2 = `saidvsdid-report-${job}-${suffix()}`;
+      const ref = { workflow_run_backend_id: ids.run, workflow_job_run_backend_id: ids.job, name: name2 };
+      const created = await twirp(deps, origin, token, "CreateArtifact", { ...ref, version: 4 });
+      if (created.status === 409 && attempt2 === 0) continue;
+      const signed = created.json?.["signed_upload_url"];
+      if (created.status !== 200 || created.json?.["ok"] !== true || typeof signed !== "string") throw new UploadError(`CreateArtifact: HTTP ${created.status}`);
+      let blobUrl;
+      try {
+        blobUrl = new URL(signed);
+      } catch {
+        throw new UploadError("CreateArtifact: the upload URL is not a URL");
+      }
+      if (blobUrl.protocol !== "https:") throw new UploadError("CreateArtifact: the upload URL is not https");
+      const put = await request(deps, "upload", blobUrl.href, { method: "PUT", headers: new Headers([["x-ms-blob-type", "BlockBlob"], ["content-type", "application/zip"]]), body: body2 });
+      if (put.status !== 201 && put.status !== 200) throw new UploadError(`upload: HTTP ${put.status}`);
+      const finalized = await twirp(deps, origin, token, "FinalizeArtifact", { ...ref, size: String(body2.length), hash: `sha256:${sha2562}` });
+      const id = finalized.json?.["artifact_id"];
+      const idText = typeof id === "string" || typeof id === "number" ? String(id) : "";
+      if (finalized.status !== 200 || finalized.json?.["ok"] !== true || !/^\d+$/.test(idText)) throw new UploadError(`FinalizeArtifact: HTTP ${finalized.status}`);
+      const server2 = (env2["GITHUB_SERVER_URL"] || "https://github.com").replace(/\/+$/, "");
+      return { ok: true, id: idText, name: name2, url: `${server2}/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/actions/runs/${runId}/artifacts/${idText}` };
+    }
+    return { ok: false, why: "CreateArtifact: the name is taken" };
+  } catch (e) {
+    return { ok: false, why: e instanceof UploadError ? e.message : "the upload failed" };
+  }
 }
 
 // src/action/run.ts
@@ -225950,6 +226380,7 @@ var ACTIONS_BOT = "github-actions[bot]";
 function actionEnv(env2) {
   return ownRecord(Object.assign({}, env2, { INPUT_FAIL_ON: env2["INPUT_FAIL-ON"], GITHUB_TOKEN: env2["INPUT_GITHUB-TOKEN"] }));
 }
+var ANALYSED_EVENTS = /* @__PURE__ */ new Set(["pull_request", "pull_request_target"]);
 var InputError = class extends Error {
 };
 function parseFailOn(value2) {
@@ -226043,22 +226474,42 @@ async function upsertComment(api, pr, body2) {
   const res = existing === null ? await call(api, "POST", `${issue}/${pr.number}/comments`, { body: body2 }) : await call(api, "PATCH", `${issue}/comments/${existing}`, { body: body2 });
   return isRecord(res) && typeof res["html_url"] === "string" ? res["html_url"] : null;
 }
-async function analyse(env2, pr, failOn, exclude) {
+var SUMMARY_LIMIT = 1e6;
+function failure(reason, failOn) {
+  const body2 = renderErrorComment(reason, failOn);
+  return { verdict: "ERROR", body: body2, detail: reason, qualified: false, summary: body2 };
+}
+async function analyse(env2, fetchImpl, pr, failOn, exclude) {
   const workspace = env2["GITHUB_WORKSPACE"] || process.cwd();
-  let base;
   try {
-    base = git(workspace, ["merge-base", pr.baseSha, pr.headSha]).trim();
-  } catch {
-    return { verdict: "ERROR", body: renderErrorComment(`the base and head commits are not both in the clone (${pr.baseSha.slice(0, 12)}, ${pr.headSha.slice(0, 12)}): check out with \`fetch-depth: 0\``, failOn) };
-  }
-  try {
-    const report = await runCheck2({ repo: workspace, base, head: pr.headSha, exclude });
+    const report = await runCheck2({ repo: workspace, base: pr.baseSha, head: pr.headSha, baseLabel: "pull_request.base.sha", exclude });
     const server2 = (env2["GITHUB_SERVER_URL"] || "https://github.com").replace(/\/+$/, "");
     const repoUrl = `${server2}/${encodeURIComponent(pr.owner)}/${encodeURIComponent(pr.repo)}`;
     const link = (side, file, line7) => `${repoUrl}/blob/${side === "base" ? report.repo.base : report.repo.head}/${encodePath(file)}${line7 === null ? "" : `#L${line7}`}`;
-    return { verdict: report.verdict, body: renderComment(report, { link, failOn }) };
+    const c = report.coverage;
+    const qualified = report.verdict === "OK" && c !== void 0 && (incomplete(c) || c.analysed === 0);
+    const options = { link, failOn };
+    const full = renderComment(report, { ...options, full: true });
+    let body2 = renderComment(report, options);
+    if (!commentFits(report, options)) {
+      const encode = (s) => new TextEncoder().encode(s);
+      const upload = await uploadArtifact(
+        [
+          { name: "saidvsdid-report.md", bytes: encode(full.slice(COMMENT_MARKER.length + 1)) },
+          { name: "saidvsdid-report.json", bytes: encode(renderJson(report)) }
+        ],
+        { env: env2, fetch: fetchImpl }
+      );
+      const rest = upload.ok ? { kind: "artifact", url: upload.url } : { kind: "reproduce", why: upload.why, pr: pr.number, baseSha: pr.baseSha, mergeBase: report.repo.base, head: report.repo.head, exclude, version: VERSION };
+      body2 = renderComment(report, { ...options, rest });
+    }
+    const summary = commentFits(report, options) || new TextEncoder().encode(full).length > SUMMARY_LIMIT ? body2 : full;
+    return { verdict: report.verdict, body: body2, detail: c ? coverageCounts(c) : "", qualified, summary };
   } catch (e) {
-    return { verdict: "ERROR", body: renderErrorComment(e instanceof Error ? e.message : String(e), failOn) };
+    if (e instanceof MissingHistoryError) {
+      return failure(`the base and head commits are not both in the clone, with the history between them (${pr.baseSha.slice(0, 12)}, ${pr.headSha.slice(0, 12)}): check out with \`fetch-depth: 0\``, failOn);
+    }
+    return failure(e instanceof Error ? e.message : String(e), failOn);
   }
 }
 function commandData(s) {
@@ -226082,16 +226533,26 @@ async function runAction(deps) {
     log(`::error::saidvsdid: ${message2}`);
     return { verdict: "ERROR", exitCode: 1, body: "", commentUrl: null };
   }
+  const eventName = env2["GITHUB_EVENT_NAME"];
+  if (eventName && !ANALYSED_EVENTS.has(eventName)) {
+    const summary2 = env2["GITHUB_STEP_SUMMARY"];
+    if (summary2) appendFileSync(summary2, `saidvsdid runs on pull_request events; nothing to check here (event: ${literal2(eventName)}).
+`);
+    const output2 = env2["GITHUB_OUTPUT"];
+    if (output2) appendFileSync(output2, "verdict=SKIPPED\nexit-code=\ncomment-url=\n");
+    log(`::notice::saidvsdid runs on pull_request events; nothing to check here (event: ${eventName})`);
+    return { verdict: "SKIPPED", exitCode: 0, body: "", commentUrl: null };
+  }
   let event = null;
   try {
     event = JSON.parse(readFileSync4(env2["GITHUB_EVENT_PATH"] ?? "", "utf8"));
   } catch {
     event = null;
   }
-  const pr = pullRequestOf(event, env2["GITHUB_REPOSITORY"]);
-  const { verdict, body: body2 } = typeof pr === "string" ? { verdict: "ERROR", body: renderErrorComment(pr, failOn) } : await analyse(env2, pr, failOn, exclude);
+  const pr = eventName ? pullRequestOf(event, env2["GITHUB_REPOSITORY"]) : "no GITHUB_EVENT_NAME: saidvsdid runs as a step of a GitHub Actions workflow";
+  const { verdict, body: body2, detail, qualified, summary: summaryText } = typeof pr === "string" ? failure(pr, failOn) : await analyse(env2, deps.fetch, pr, failOn, exclude);
   const summary = env2["GITHUB_STEP_SUMMARY"];
-  if (summary) appendFileSync(summary, body2.slice(COMMENT_MARKER.length + 1));
+  if (summary) appendFileSync(summary, summaryText.slice(COMMENT_MARKER.length + 1));
   let commentUrl = null;
   if (comment && typeof pr !== "string") {
     try {
@@ -226106,8 +226567,8 @@ exit-code=${EXIT_CODES[verdict]}
 comment-url=${commentUrl ?? ""}
 `);
   const fails = blocks(verdict, failOn);
-  const level = verdict === "OK" ? "notice" : fails ? "error" : "warning";
-  log(`::${level}::saidvsdid: ${verdict}${fails ? ` (fail-on: ${failOn})` : failOn === "none" ? " (not blocking: fail-on is not set)" : ` (not blocking: fail-on: ${failOn})`}${commentUrl ? ` — ${commentUrl}` : ""}`);
+  const level = verdict === "OK" && !qualified ? "notice" : fails ? "error" : "warning";
+  log(`::${level}::saidvsdid: ${verdict}${detail ? ` — ${detail}` : ""}${fails ? ` (fail-on: ${failOn})` : failOn === "none" ? " (not blocking: fail-on is not set)" : ` (not blocking: fail-on: ${failOn})`}${commentUrl ? ` — ${commentUrl}` : ""}`);
   return { verdict, exitCode: fails ? 1 : 0, body: body2, commentUrl };
 }
 

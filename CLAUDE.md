@@ -296,7 +296,14 @@
   with nothing above INFO, exit 0; there is no PASS. Without a transcript or
   evidence, TG006/TG007 are `not_evaluated`, never among the rules that found
   nothing. "Never PASS" in a guarantee means never exit 0. TG006/TG007 are
-  marked experimental in the docs and the output.
+  marked experimental in the docs and the output. An OK says what it covers
+  (docs/rules.md, *Coverage*): "no issues found" only when every changed test
+  file was analysed; otherwise the files read in part or not at all are listed
+  before any finding, and with none detected it says that (src/coverage.ts;
+  coverage never changes a verdict or an exit code). `SKIPPED` is the Action's
+  output on an event that is not a pull request's, decided by the event's name;
+  never a verdict, never an ERROR, never a failed check. `check --base` compares
+  the merge base of base and head, as the Action does (`selectBase`).
 - **Evidence about other code is not evaluated.** `--evidence` whose base,
   head or any run's `tree_sha` is not the reviewed one: TG006/TG007 not
   evaluated (WARN `evidence_mismatch`), no claim context. Matching evidence is
@@ -337,7 +344,8 @@
 3. Open a PR; the fast CI (`.github/workflows/ci.yml`, Linux: the suite, the
    fixtures against the real runners, Python 3.11 and 3.15, the dogfood) runs on
    every push to it and must be green.
-4. External review with Codex on the PR; findings are fixed or moved to the
+4. External review with Codex on the PR, when the PR changes what a verdict
+   can be (Process, *Codex reviews*); findings are fixed or moved to the
    backlog with a reason.
 5. Before merging a milestone, every item marked "backlog" in the external
    (Codex) reviews or in Claude's summaries is in `docs/backlog.md`.
@@ -410,6 +418,12 @@
 - **Design review before implementing.** Every rule that decides a FAIL or a
   silence is first described in one paragraph, and Codex attacks it before any
   code is written.
+- **Codex reviews.** Codex reviews only changes that can change a verdict: a
+  rule, a reader, the attribution, the contract, the oracle or the recorder,
+  what the CLI or the Action reports. Never documentation, CI or Dependabot:
+  Codex is not launched for those. At most 2 rounds per PR (a design review
+  and a code review count alike) without asking the owner: before a third,
+  tell the owner what is still open and wait for an answer.
 - **One principle per task.** Small changes, nothing done "while at it".
 - **Proportional verification.** Focused tests while iterating; one full
   battery plus the CI at the end.

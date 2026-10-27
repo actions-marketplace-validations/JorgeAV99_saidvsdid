@@ -57,7 +57,7 @@ describe('settings safety net', () => {
   it('a setting hidden behind a spread in a JS config never passes', async () => {
     const cfg = (shared: string): string => `import { defineConfig } from 'vitest/config';\nconst shared = { ${shared} };\nexport default defineConfig({ test: { ...shared } });\n`;
     const r = await verdict({ 'vitest.config.ts': [cfg("environment: 'node'"), cfg("environment: 'node', retry: 2")], 'a.test.ts': [`it('a', () => {});\n`, `it('a', () => {});\n`] });
-    expect(r).toEqual({ verdict: 'WARN', findings: ['TG005 warn vitest.config.ts: Test runner config changed; review manually: the analyzer did not report anything specific about it (more occurrences of `retry` 0 → 1)'] });
+    expect(r).toEqual({ verdict: 'WARN', findings: ['TG005 warn vitest.config.ts: Test runner config changed; review manually: saidvsdid found no specific change in the settings it reads, and the file decides which tests run (more occurrences of `retry` 0 → 1)'] });
   });
 
   // The config net does not depend on what the readers understood (Codex review, M2):
@@ -65,7 +65,13 @@ describe('settings safety net', () => {
   it('a content change without a TG005 finding warns, even with no scope token (reporters)', async () => {
     const cfg = (extra: string): string => `import { defineConfig } from 'vitest/config';\nexport default defineConfig({ test: { environment: 'node'${extra} } });\n`;
     const r = await verdict({ 'vitest.config.ts': [cfg(''), cfg(", reporters: ['dot']")], 'a.test.ts': [`it('a', () => {});\n`, `it('a', () => {});\n`] });
-    expect(r).toEqual({ verdict: 'WARN', findings: ['TG005 warn vitest.config.ts: Test runner config changed; review manually: the analyzer did not report anything specific about it'] });
+    expect(r).toEqual({ verdict: 'WARN', findings: ['TG005 warn vitest.config.ts: Test runner config changed; review manually: saidvsdid found no specific change in the settings it reads, and the file decides which tests run'] });
+  });
+
+  // The 0.2.0 audit: pypa/packaging's conftest.py edits got "the analyzer did not report anything specific about it".
+  it('a conftest.py change says what the file is and that saidvsdid does not analyse it', async () => {
+    const r = await verdict({ 'tests/conftest.py': ['import pytest\n', 'import pytest\n\n\ndef pytest_collection_finish(session):\n    pass\n'] });
+    expect(r.findings).toEqual(['TG005 warn tests/conftest.py: Test runner config changed; review manually: `conftest.py` can change which tests run and how (hooks, fixtures, marks), and saidvsdid does not analyse it']);
   });
 
   describe('package.json: the scripts that run tests and the test-runner keys only, compared strictly', () => {
@@ -143,7 +149,7 @@ describe('settings safety net', () => {
   it('the config net warns even where the reader understood the change (coverage.exclude)', async () => {
     const cfg = (cov: string): string => `import { defineConfig } from 'vitest/config';\nexport default defineConfig({ test: { coverage: { ${cov} } } });\n`;
     const r = await verdict({ 'vitest.config.ts': [cfg(''), cfg("exclude: ['src/generated/**']")], 'a.test.ts': [`it('a', () => {});\n`, `it('a', () => {});\n`] });
-    expect(r).toEqual({ verdict: 'WARN', findings: ['TG005 warn vitest.config.ts: Test runner config changed; review manually: the analyzer did not report anything specific about it (more occurrences of `exclude` 0 → 1)'] });
+    expect(r).toEqual({ verdict: 'WARN', findings: ['TG005 warn vitest.config.ts: Test runner config changed; review manually: saidvsdid found no specific change in the settings it reads, and the file decides which tests run (more occurrences of `exclude` 0 → 1)'] });
   });
 
   it('the config net warns on a stricter pytest timeout too', async () => {

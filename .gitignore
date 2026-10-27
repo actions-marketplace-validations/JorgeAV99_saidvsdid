@@ -13,3 +13,5 @@ __pycache__/
 test-results/
 # Codex's local review folders (.review-release/, .review-pr11/, …): never versioned.
 /.review-*/
+# The artifact round trip's harness, bundled by CI from scripts/artifact-roundtrip.ts (.github/workflows/ci.yml).
+/.github/actions/artifact-roundtrip/index.js
